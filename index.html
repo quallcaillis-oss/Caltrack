@@ -1408,14 +1408,15 @@ function nextDay() {
 // ═══════════════════════════════════════════════
 // AI CORE
 // ═══════════════════════════════════════════════
-async function callAI(prompt) {
+async function callAI(prompt) { return callAIWithTokens(prompt, 300); }
+async function callAIWithTokens(prompt, maxTok = 300) {
   const { provider, groqKey, geminiKey, geminiModel, mistralKey, claudeKey } = state.ai;
   if (provider === 'none') return null;
   if (provider === 'groq') {
     if (!groqKey) return null;
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], max_tokens:300, temperature:0.3 }) });
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:0.3 }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Groq error'); }
     return (await r.json()).choices?.[0]?.message?.content || null;
   }
@@ -1432,7 +1433,7 @@ async function callAI(prompt) {
     if (!mistralKey) return null;
     const r = await fetch('https://api.mistral.ai/v1/chat/completions', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+mistralKey},
-      body: JSON.stringify({ model:'mistral-small-latest', messages:[{role:'user',content:prompt}], max_tokens:300, temperature:0.3 }) });
+      body: JSON.stringify({ model:'mistral-small-latest', messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:0.3 }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Mistral error'); }
     return (await r.json()).choices?.[0]?.message?.content || null;
   }
@@ -1440,7 +1441,7 @@ async function callAI(prompt) {
     if (!claudeKey) return null;
     const r = await fetch('https://api.anthropic.com/v1/messages', { method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:maxTok, messages:[{role:'user',content:prompt}] }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Claude error'); }
     return (await r.json()).content?.[0]?.text || null;
   }
@@ -1890,13 +1891,12 @@ async function generateRecipe(userTriggered = false) {
   const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const seed = getRandomSeed();
-  const deficitTarget = Math.max(200, remaining - maxKcal);
 
-  // Build constraints from hates only — don't force likes, just don't exclude them
-  const hates = (state.food?.hate||[]).map(h=>h.name).join(', ');
-  const hateStr = hates ? `\nNEVER use these ingredients (user dislikes them): ${hates}.` : '';
-  const loves = (state.food?.love||[]).map(h=>h.name).join(', ');
-  const loveStr = loves ? `\nUser enjoys these flavours/foods — lean towards these styles if it makes sense: ${loves}.` : '';
+  // Pass hates as hard exclusions ONLY.
+  // Do NOT pass likes/loves to recipe AI — it treats them as mandatory ingredients,
+  // producing nonsense combos like "chia seeds in stir fry".
+  const hates = (state.food?.hate||[]).map(h => h.name).join(', ');
+  const hateStr = hates ? '\nHard exclusions — NEVER use: ' + hates + '.' : '';
 
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
@@ -1907,30 +1907,26 @@ async function generateRecipe(userTriggered = false) {
   _recipeMethod = [];
 
   try {
-    const prompt = `You are a professional recipe writer. Generate a REAL, complete ${seed} ${mealType} recipe — a genuine dish with a proper name (e.g. "Lemon Herb Chicken with Quinoa", "Spinach Omelette", "Turkey Stir-Fry"). NOT just a list of healthy foods. A real recipe someone would cook.
+    const prompt = 'You are a recipe writer. Generate a REAL ' + seed + ' ' + mealType + ' recipe.\n\n' +
+      'Start by thinking of a proper dish name (e.g. "Greek Chicken Bowl", "Shakshuka", "Salmon Teriyaki", "Lentil Soup"). ' +
+      'Then write the recipe for that dish. Ingredients must belong together culinarily — no random health foods thrown in.\n\n' +
+      'Constraints: max ' + maxKcal + ' kcal total, minimum ' + minProt + 'g protein.' + hateStr + '\n\n' +
+      'Reply in EXACTLY this format — no intro text, no commentary:\n' +
+      'RECIPE NAME: [dish name]\n' +
+      'INGREDIENTS:\n' +
+      '[qty] [unit] [ingredient] | [kcal per 100g/ml] | [protein g per 100g/ml]\n' +
+      'METHOD:\n' +
+      '1. [step]\n' +
+      '2. [step]\n' +
+      '3. [step]\n\n' +
+      'Units: g ml cup tbsp tsp piece slice clove';
 
-Calorie budget: max ${maxKcal} kcal total. Minimum ${minProt}g protein. Keep deficit of at least ${deficitTarget} kcal below their TDEE of ${tdee} kcal.${hateStr}${loveStr}
-
-Reply in EXACTLY this format, no intro text:
-RECIPE NAME: [exact dish name]
-INGREDIENTS:
-[qty] [unit] [ingredient name] | [kcal per 100g] | [protein g per 100g]
-[qty] [unit] [ingredient name] | [kcal per 100g] | [protein g per 100g]
-(list each ingredient on its own line, pipe-separated nutrition)
-METHOD:
-1. [step]
-2. [step]
-3. [step]
-
-Units must be one of: g ml kg l cup tbsp tsp oz piece slice clove handful`;
-
-    const resp = await callAI(prompt);
-    if (!resp || resp === _lastRecipeText) {
-      // Force a retry if same response
-      if (resp === _lastRecipeText) {
-        document.getElementById('home-tip-text').innerHTML = '<p style="color:var(--text-3);font-size:12px;text-align:center;padding:12px;">Generating a different recipe…</p>';
-        return;
-      }
+    const resp = await callAIWithTokens(prompt, 600);
+    if (!resp) return;
+    if (resp === _lastRecipeText) {
+      document.getElementById('home-tip-text').innerHTML =
+        '<p style="color:var(--text-3);font-size:12px;text-align:center;padding:12px;">Same recipe returned — tap again for a different one.</p>';
+      _lastRecipeText = '';
       return;
     }
     _lastRecipeText = resp;
@@ -1943,17 +1939,15 @@ Units must be one of: g ml kg l cup tbsp tsp oz piece slice clove handful`;
     _recipeName = nameM ? nameM[1].trim() : mealType + ' recipe';
 
     if (ingSection) {
-      const lines = ingSection[1].trim().split('\n').map(l=>l.trim()).filter(Boolean);
+      const lines = ingSection[1].trim().split('\n').map(l => l.trim()).filter(Boolean);
       _recipeIngredients = lines.map(line => {
-        // Format: "200 g chicken breast | 165 | 31"
-        const parts = line.split('|').map(p=>p.trim());
+        const parts = line.split('|').map(p => p.trim());
         const ingPart = parts[0] || '';
         const kcalPer100 = parseFloat(parts[1]) || 0;
         const protPer100 = parseFloat(parts[2]) || 0;
-        // Parse "200 g chicken breast"
         const qm = ingPart.match(/^([\d.]+)\s*(g|ml|kg|l|cup|cups|tbsp|tsp|oz|lb|piece|pieces|slice|slices|clove|cloves|handful)?\s+(.*)/i);
         const qty  = qm ? qm[1] : '100';
-        const unit = qm ? (qm[2]||'g') : 'g';
+        const unit = qm ? (qm[2] || 'g') : 'g';
         const name = qm ? qm[3].trim() : ingPart;
         return { name, qty, unit, kcalPer100, protPer100, removed: false };
       }).filter(i => i.name);
@@ -1968,7 +1962,8 @@ Units must be one of: g ml kg l cup tbsp tsp oz piece slice clove handful`;
     renderRecipePanel(_recipeName, _recipeMethod);
 
   } catch(e) {
-    document.getElementById('home-tip-text').innerHTML = `<p style="color:var(--red);font-size:12px;padding:12px;">Error: ${escHtml(e.message)}</p>`;
+    document.getElementById('home-tip-text').innerHTML =
+      '<p style="color:var(--red);font-size:12px;padding:12px;">Error: ' + escHtml(e.message) + '</p>';
   } finally { mealTipSetLoading(false); }
 }
 
@@ -3284,10 +3279,10 @@ function rcNewRecipe() {
 }
 
 async function rcCalculate() {
-  const name    = document.getElementById('rc-name').value.trim();
-  const text    = document.getElementById('rc-text').value.trim();
-  const servings   = parseFloat(document.getElementById('rc-servings').value)    || 2;
-  const myServings = parseFloat(document.getElementById('rc-my-serving').value)  || 1;
+  const name       = document.getElementById('rc-name').value.trim();
+  const text       = document.getElementById('rc-text').value.trim();
+  const servings   = parseFloat(document.getElementById('rc-servings').value)   || 2;
+  const myServings = parseFloat(document.getElementById('rc-my-serving').value) || 1;
 
   if (!text) { alert('Please enter your recipe text first.'); return; }
   if (state.ai.provider === 'none') { alert('Connect an AI in Settings to calculate nutrition.'); return; }
@@ -3297,112 +3292,75 @@ async function rcCalculate() {
 
   try {
     const ratio = myServings / servings;
-    const prompt = `You are a precise nutritionist. Parse this recipe and calculate nutrition.
 
-Recipe name: "${name || 'My Recipe'}"
-Recipe text:
+    const prompt = `You are a nutritionist. Parse this recipe and calculate total nutrition for the WHOLE recipe.
+
+RECIPE TEXT:
 ${text}
 
-Instructions:
-1. Identify each ingredient with its quantity
-2. Calculate nutrition for the ENTIRE recipe using USDA values
-3. Suggest a sensible serving size description (e.g. "1 bowl ~350g" or "1 plate")
-4. Give ONE improvement tip (increase protein or lower calories, max 15 words)
+Use USDA nutritional values. Reply ONLY with this exact JSON (no markdown, no extra text):
+{"recipe_name":"Name Here","ing_list":"ingredient1 (kcal, protein g), ingredient2 (kcal, protein g)","total_kcal":0,"total_protein":0,"total_carbs":0,"total_fat":0,"total_fiber":0,"serving_suggestion":"1 plate approx 300g","tip":"One short improvement tip under 15 words"}
 
-Reply ONLY with valid JSON, no markdown:
-{
-  "recipe_name": "...",
-  "ingredients": [
-    {"name": "chicken breast", "qty": "300", "unit": "g", "kcal_total": 330, "protein_total": 63, "carbs_total": 0, "fat_total": 3.6}
-  ],
-  "total_kcal": 0,
-  "total_protein": 0,
-  "total_carbs": 0,
-  "total_fat": 0,
-  "total_fiber": 0,
-  "serving_suggestion": "1 bowl (approx 300g)",
-  "tip": "..."
-}`;
+Rules: all numeric values are plain numbers. ing_list is a simple comma-separated string. tip under 15 words. No newlines inside any string value.`;
 
-    const resp = await callAI(prompt);
+    const resp = await callAIWithTokens(prompt, 700);
     if (!resp) throw new Error('No response from AI');
 
-    // Robust JSON extraction — handles markdown fences, truncation, control chars
-    let jsonStr = resp.replace(/```json|```/g, '').trim();
-    // Extract first complete JSON object
-    const jsonStart = jsonStr.indexOf('{');
-    const jsonEnd   = jsonStr.lastIndexOf('}');
-    if (jsonStart === -1 || jsonEnd === -1) throw new Error('AI did not return valid JSON. Please try again.');
-    jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1);
-    // Remove control characters that break JSON.parse
-    // Clean control chars safely without byte literals in regex
-    let cleaned = '';
-    for (let i = 0; i < jsonStr.length; i++) {
-      const code = jsonStr.charCodeAt(i);
-      if (code === 10) cleaned += '\\n';
-      else if (code === 13) continue;
-      else if (code === 9)  cleaned += '\\t';
-      else if (code < 32)   continue;
-      else cleaned += jsonStr[i];
-    }
-    let data;
-    try { data = JSON.parse(jsonStr); }
-    catch(e1) {
-      try { data = JSON.parse(cleaned); }
-      catch(e2) { throw new Error('Could not parse AI response. Try again.'); }
-    }
+    // Extract JSON safely
+    const s = resp.indexOf('{');
+    const e = resp.lastIndexOf('}');
+    if (s === -1 || e <= s) throw new Error('AI returned no JSON. Try again.');
+    let jsonStr = resp.slice(s, e + 1);
+
+    // Fix unescaped newlines inside string values
+    jsonStr = jsonStr.replace(/("(?:[^"\\]|\\.)*")/g, m =>
+      m.replace(/\n/g,' ').replace(/\r/g,'').replace(/\t/g,' ')
+    );
+
+    const data = JSON.parse(jsonStr);
     _rcParsedData = data;
 
-    // Scale to my serving portion
-    const per = n => Math.round((n || 0) * ratio * 10) / 10;
+    const per = n => +((n || 0) * ratio).toFixed(1);
 
     document.getElementById('rc-result').style.display = 'block';
     document.getElementById('rc-result-title-name').textContent =
       (name || data.recipe_name || 'My Recipe') + ' — per serving';
     document.getElementById('rc-result-subtitle').textContent =
-      `${myServings} of ${servings} servings`;
+      myServings + ' of ' + servings + ' servings';
 
     document.getElementById('rc-kcal').textContent    = Math.round(per(data.total_kcal));
     document.getElementById('rc-protein').textContent = per(data.total_protein) + 'g';
     document.getElementById('rc-carbs').textContent   = per(data.total_carbs)   + 'g';
     document.getElementById('rc-fat').textContent     = per(data.total_fat)     + 'g';
 
-    // Serving suggestion
     const servEl = document.getElementById('rc-ai-serving');
     if (data.serving_suggestion) {
-      servEl.textContent = '✦ AI suggested serving: ' + data.serving_suggestion;
+      servEl.textContent = '✦ Suggested serving: ' + data.serving_suggestion;
       servEl.style.display = 'block';
-    } else servEl.style.display = 'none';
+    } else { servEl.style.display = 'none'; }
 
-    // Tip
     const tipEl = document.getElementById('rc-tip');
     if (data.tip) {
       tipEl.innerHTML = '<strong>💡 Improve:</strong> ' + escHtml(data.tip);
       tipEl.style.display = 'block';
-    } else tipEl.style.display = 'none';
+    } else { tipEl.style.display = 'none'; }
 
-    // Ingredient breakdown
-    if (data.ingredients && data.ingredients.length) {
+    if (data.ing_list) {
       const bList = document.getElementById('rc-breakdown-list');
-      bList.innerHTML = data.ingredients.map(ing =>
-        `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;">
-          <span style="flex:1;color:var(--text);">${escHtml(ing.qty + (ing.unit?' '+ing.unit:'') + ' ' + ing.name)}</span>
-          <span style="color:var(--yellow);font-family:'DM Mono',monospace;min-width:42px;text-align:right;">${Math.round(ing.kcal_total||0)} kcal</span>
-          <span style="color:var(--green);font-family:'DM Mono',monospace;min-width:38px;text-align:right;">${Math.round(ing.protein_total||0)}g P</span>
-        </div>`
+      bList.innerHTML = data.ing_list.split(',').map(s => s.trim()).filter(Boolean).map(ing =>
+        '<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);">' + escHtml(ing) + '</div>'
       ).join('');
       document.getElementById('rc-breakdown').style.display = 'block';
     }
 
-    // Show action buttons
     document.getElementById('rc-log-btn').style.display  = 'block';
     document.getElementById('rc-save-btn').style.display = 'block';
 
-  } catch(e) {
-    alert('Error parsing recipe: ' + e.message);
+  } catch(err) {
+    console.error('rcCalculate:', err);
+    alert('Error: ' + err.message);
   } finally { hideAIStatus(); }
 }
-
 function rcLogServing() {
   if (!_rcParsedData) return;
   const name       = document.getElementById('rc-name').value.trim() || _rcParsedData.recipe_name || 'My Recipe';
