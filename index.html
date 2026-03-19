@@ -277,33 +277,6 @@ table.hist-table .td-red{color:var(--red);}
 .recipe-log-btn{width:100%;margin-top:10px;padding:10px;border-radius:var(--radius-sm);background:linear-gradient(135deg,var(--green),#16a34a);color:white;font-family:"Outfit",sans-serif;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:var(--t);box-shadow:0 2px 12px rgba(34,197,94,.2);}
 .recipe-log-btn:hover{box-shadow:0 4px 20px rgba(34,197,94,.35);transform:translateY(-1px);}
 
-/* ── INTERACTIVE RECIPE INGREDIENTS ── */
-.recipe-ing-table{width:100%;border-collapse:collapse;margin-bottom:4px;}
-.recipe-ing-table th{font-size:9px;font-weight:700;color:var(--text-3);letter-spacing:1.5px;text-transform:uppercase;padding:4px 6px;text-align:left;border-bottom:1px solid var(--border);}
-.recipe-ing-table th.num{text-align:right;}
-.recipe-ing-row td{padding:5px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
-.recipe-ing-row:last-child td{border-bottom:none;}
-.recipe-ing-row.hated{background:rgba(239,68,68,.04);}
-.ri-ing-name{font-size:12px;color:var(--text);}
-.ri-ing-hated{text-decoration:line-through;color:var(--red);opacity:.7;}
-.ri-ing-hated-tag{font-size:9px;color:var(--red);background:var(--red-dim);border-radius:3px;padding:1px 5px;margin-left:4px;}
-.ri-qty-input{width:52px;padding:3px 5px;font-family:"DM Mono",monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;text-align:center;}
-.ri-qty-input:focus{border-color:var(--cyan);}
-.ri-qty-input:focus{border-color:var(--cyan);}
-.ri-kcal{font-family:"DM Mono",monospace;font-size:12px;color:var(--yellow);text-align:right;min-width:42px;}
-.ri-prot{font-family:"DM Mono",monospace;font-size:12px;color:var(--green);text-align:right;min-width:38px;}
-.ri-del{background:none;border:none;color:var(--text-3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;transition:var(--t);}
-.ri-del:hover{color:var(--red);background:var(--red-dim);}
-.recipe-totals-row{display:flex;gap:8px;margin:8px 0;padding:8px 10px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border-hi);}
-.rt-cell{flex:1;text-align:center;}
-.rt-val{font-family:"DM Mono",monospace;font-size:16px;font-weight:600;display:block;}
-.rt-lbl{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;}
-.recipe-target-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:var(--cyan-dim);border:1px solid rgba(6,214,199,.2);border-radius:var(--radius-sm);margin-bottom:8px;font-size:11px;color:var(--text-2);}
-.recipe-target-row input{width:70px;padding:5px 8px;font-family:"DM Mono",monospace;font-size:12px;background:var(--surface);border:1px solid rgba(6,214,199,.3);border-radius:6px;color:var(--text);outline:none;text-align:center;}
-.recipe-target-row input:focus{border-color:var(--cyan);}
-.recipe-scale-btn{padding:5px 12px;font-size:11px;font-weight:700;background:var(--cyan);color:#080b12;border:none;border-radius:6px;cursor:pointer;font-family:"Outfit",sans-serif;}
-.recipe-scale-btn:hover{filter:brightness(1.1);}
-
 /* ── FOOD PREFERENCES TAB ── */
 .food-pref-section{margin-bottom:14px;}
 .food-pref-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
@@ -578,21 +551,19 @@ table.hist-table .td-red{color:var(--red);}
         </div>
       </div>
       <div class="meal-tip-body" id="meal-tip-body">
-        <!-- Controls FIRST — set targets before generating -->
-        <div class="meal-tip-controls" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <div id="meal-tip-loading">✦ Generating…</div>
+        <div id="home-tip-text"></div>
+        <div class="meal-tip-controls">
           <div class="meal-tip-ctrl">
             <span>Max kcal</span>
-            <input type="number" id="tip-max-kcal" placeholder="—" min="100" max="3000" step="50">
+            <input type="number" id="tip-max-kcal" placeholder="auto" min="100" max="2000" step="50">
           </div>
           <div class="meal-tip-ctrl">
             <span>Min protein</span>
-            <input type="number" id="tip-min-protein" placeholder="—" min="0" max="300" step="5">
+            <input type="number" id="tip-min-protein" placeholder="auto" min="0" max="200" step="5">
             <span>g</span>
           </div>
-          <span id="tip-budget-hint" style="font-size:10px;color:var(--text-3);margin-left:auto;"></span>
         </div>
-        <div id="meal-tip-loading">✦ Generating…</div>
-        <div id="home-tip-text"></div>
       </div>
     </div>
     <div id="warning-banner">⚠ Caloric intake exceeds your metabolic baseline</div>
@@ -859,44 +830,29 @@ table.hist-table .td-red{color:var(--red);}
     <!-- RECIPE CALCULATOR -->
     <div class="panel rc-panel">
       <div class="panel-label">🧮 Recipe Calculator</div>
-      <p style="font-size:11px;color:var(--text-2);margin-bottom:12px;line-height:1.5;">
-        Paste or type your recipe as free text — ingredients, amounts, method. AI will parse it, calculate nutrition, and suggest a serving size.
-      </p>
+      <p style="font-size:11px;color:var(--text-2);margin-bottom:12px;line-height:1.5;">Enter every ingredient you used. AI calculates the nutrition per recipe and per serving.</p>
 
-      <div class="profile-field" style="margin-bottom:10px;">
-        <span class="field-label">Recipe Name</span>
-        <input type="text" id="rc-name" placeholder="e.g. Mum's Chicken Stew" maxlength="80" style="text-align:left;margin-top:5px;font-family:'Outfit',sans-serif;font-size:14px;">
+      <div id="rc-ingredients-list"></div>
+
+      <button onclick="rcAddIngredient()" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-2);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px;transition:var(--t);" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">+ Add Ingredient</button>
+
+      <div class="rc-serving-row">
+        <span>Recipe makes</span>
+        <input type="number" id="rc-servings" value="2" min="1" max="20" step="1">
+        <span>servings — calculating for</span>
+        <input type="number" id="rc-my-serving" value="1" min="1" max="20" step="0.5">
+        <span>serving(s)</span>
       </div>
 
-      <div class="profile-field" style="margin-bottom:10px;">
-        <span class="field-label">Recipe Text</span>
-        <textarea id="rc-text" placeholder="e.g.&#10;300g chicken breast&#10;200g sweet potato, diced&#10;1 tbsp olive oil&#10;1 onion&#10;2 cloves garlic&#10;400ml chicken stock&#10;&#10;Fry onion in oil, add chicken, add stock and potato, simmer 25 min."
-          style="margin-top:5px;width:100%;min-height:140px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;padding:10px;outline:none;resize:vertical;line-height:1.6;"
-          onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='var(--border)'"></textarea>
-      </div>
+      <button onclick="rcCalculate()" class="btn-full" style="margin-bottom:4px;">
+        ✦ Calculate Nutrition
+      </button>
 
-      <div class="rc-serving-row" style="margin-bottom:10px;">
-        <span>Total servings in recipe</span>
-        <input type="number" id="rc-servings" value="2" min="1" max="50" step="1" style="width:60px;">
-        <span style="margin-left:8px;">My serving</span>
-        <input type="number" id="rc-my-serving" value="1" min="0.5" max="20" step="0.5" style="width:60px;">
-      </div>
-
-      <div style="display:flex;gap:8px;margin-bottom:4px;">
-        <button onclick="rcNewRecipe()" style="flex:1;padding:10px;border-radius:var(--radius-sm);background:var(--surface);border:1px solid var(--border);color:var(--text-2);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:var(--t);">✕ New Recipe</button>
-        <button onclick="rcCalculate()" class="btn-full" style="flex:2;margin-bottom:0;">✦ Calculate Nutrition</button>
-      </div>
-
-      <div id="rc-result" style="display:none;margin-top:10px;">
+      <div id="rc-result" style="display:none;">
         <div class="rc-result">
           <div class="rc-result-title">
-            <span id="rc-result-title-name">Per serving</span>
+            <span>Per serving</span>
             <span id="rc-result-subtitle" style="font-size:10px;color:var(--text-3);font-weight:400;"></span>
-          </div>
-          <!-- Parsed ingredients breakdown -->
-          <div id="rc-breakdown" style="margin-bottom:10px;display:none;">
-            <div style="font-size:9px;font-weight:700;color:var(--text-3);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">Parsed ingredients</div>
-            <div id="rc-breakdown-list"></div>
           </div>
           <div class="rc-nutrition-grid">
             <div class="rc-nut-cell"><span class="rc-nut-val" id="rc-kcal" style="color:var(--yellow)">—</span><span class="rc-nut-lbl">kcal</span></div>
@@ -904,16 +860,10 @@ table.hist-table .td-red{color:var(--red);}
             <div class="rc-nut-cell"><span class="rc-nut-val" id="rc-carbs" style="color:var(--violet)">—</span><span class="rc-nut-lbl">carbs g</span></div>
             <div class="rc-nut-cell"><span class="rc-nut-val" id="rc-fat" style="color:var(--text-2)">—</span><span class="rc-nut-lbl">fat g</span></div>
           </div>
-          <div id="rc-ai-serving" style="font-size:11px;color:var(--cyan);margin:6px 0;display:none;padding:6px 10px;background:var(--cyan-dim);border-radius:6px;"></div>
-          <div id="rc-tip" class="rc-tip" style="display:none;margin-top:6px;"></div>
-          <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="rc-log-btn" onclick="rcLogServing()" id="rc-log-btn" style="display:none;flex:1;">
-              + Log to Today
-            </button>
-            <button onclick="rcSaveToGoTo()" id="rc-save-btn" style="display:none;flex:1;padding:10px;border-radius:var(--radius-sm);background:var(--cyan-dim);border:1px solid rgba(6,214,199,.3);color:var(--cyan);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:var(--t);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
-              ⭐ Save to Go-To Meals
-            </button>
-          </div>
+          <div id="rc-tip" class="rc-tip" style="display:none;"></div>
+          <button class="rc-log-btn" onclick="rcLogServing()" id="rc-log-btn" style="display:none;">
+            + Log this serving to Today
+          </button>
         </div>
       </div>
     </div>
@@ -1352,7 +1302,6 @@ function calcBurned() { return state.currentDay.exercises.reduce((s,e)=>s+e.kcal
 function calcNet()    { return calcIntake() - calcBurned(); }
 
 function updateDisplay() {
-  if (document.getElementById('meal-tip-panel')?.style.display === 'block') updateMealTipDefaults();
   const intake = calcIntake(), burned = calcBurned(), net = calcNet();
   const baseline = state.tdee || state.bmr;
   document.getElementById('lcd-intake').textContent = intake;
@@ -1412,15 +1361,14 @@ function nextDay() {
 // ═══════════════════════════════════════════════
 // AI CORE
 // ═══════════════════════════════════════════════
-async function callAI(prompt) { return callAIWithTokens(prompt, 300); }
-async function callAIWithTokens(prompt, maxTok = 300) {
+async function callAI(prompt) {
   const { provider, groqKey, geminiKey, geminiModel, mistralKey, claudeKey } = state.ai;
   if (provider === 'none') return null;
   if (provider === 'groq') {
     if (!groqKey) return null;
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:0.3 }) });
+      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], max_tokens:300, temperature:0.3 }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Groq error'); }
     return (await r.json()).choices?.[0]?.message?.content || null;
   }
@@ -1437,7 +1385,7 @@ async function callAIWithTokens(prompt, maxTok = 300) {
     if (!mistralKey) return null;
     const r = await fetch('https://api.mistral.ai/v1/chat/completions', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+mistralKey},
-      body: JSON.stringify({ model:'mistral-small-latest', messages:[{role:'user',content:prompt}], max_tokens:maxTok, temperature:0.3 }) });
+      body: JSON.stringify({ model:'mistral-small-latest', messages:[{role:'user',content:prompt}], max_tokens:300, temperature:0.3 }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Mistral error'); }
     return (await r.json()).choices?.[0]?.message?.content || null;
   }
@@ -1445,7 +1393,7 @@ async function callAIWithTokens(prompt, maxTok = 300) {
     if (!claudeKey) return null;
     const r = await fetch('https://api.anthropic.com/v1/messages', { method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:maxTok, messages:[{role:'user',content:prompt}] }) });
+      body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Claude error'); }
     return (await r.json()).content?.[0]?.text || null;
   }
@@ -1638,34 +1586,6 @@ function toggleMealTip(e) {
   document.getElementById('meal-tip-arrow').classList.toggle('collapsed', mealTipCollapsed);
 }
 
-// Populate controls with sensible defaults based on current deficit budget
-function updateMealTipDefaults() {
-  const tdee      = state.tdee || state.bmr || 2000;
-  const net       = calcNet();
-  const remaining = Math.max(0, tdee - net);
-
-  // Default max kcal = remaining budget minus a 200 kcal safety buffer to stay in deficit
-  // Cap at 800 so we never suggest a huge meal by default
-  const defaultKcal = Math.min(Math.max(remaining - 200, 100), 800);
-  const kcalEl = document.getElementById('tip-max-kcal');
-  const protEl = document.getElementById('tip-min-protein');
-  const hint   = document.getElementById('tip-budget-hint');
-
-  // Only set placeholder/value if user hasn't already typed something
-  if (kcalEl && !kcalEl.value) kcalEl.placeholder = defaultKcal + ' kcal left';
-  if (protEl && !protEl.value) protEl.placeholder  = '25';
-
-  if (hint) {
-    if (remaining > 0) {
-      hint.textContent = remaining + ' kcal remaining today';
-      hint.style.color = remaining < 300 ? 'var(--red)' : 'var(--text-3)';
-    } else {
-      hint.textContent = 'Over TDEE today';
-      hint.style.color = 'var(--red)';
-    }
-  }
-}
-
 function mealTipSetLoading(on) {
   const loadEl = document.getElementById('meal-tip-loading');
   const btnNew = document.getElementById('btn-new-tip');
@@ -1714,169 +1634,112 @@ function formatTip(resp, mealType, remaining, tdee) {
   </div>`;
 }
 
-// ═══════════════════════════════════════════════
-// INTERACTIVE RECIPE SYSTEM
-// ═══════════════════════════════════════════════
-let _recipeIngredients = [];  // [{name, qty, unit, kcalPer100, protPer100, hated}]
-let _recipeName = '';
-let _recipeMethod = [];
+// Track current recipe for logging
+let _currentRecipe = null;
 
-// Parse qty string to a number
-function parseQty(s) { return parseFloat(String(s).replace(/[^\d.]/g,'')) || 0; }
+function formatRecipe(resp, mealType, remaining) {
+  const nameMatch = resp.match(/RECIPE NAME:\s*(.+)/i);
+  const ingMatch  = resp.match(/INGREDIENTS:\s*([\s\S]+?)(?=METHOD:|NUTRITION:|$)/i);
+  const methMatch = resp.match(/METHOD:\s*([\s\S]+?)(?=NUTRITION:|$)/i);
+  const nutrMatch = resp.match(/NUTRITION:\s*(.+)/i);
 
-// Normalize ingredient amount to grams/ml for per-100 calculation
-function toBaseUnit(qty, unit) {
-  const u = (unit||'g').toLowerCase();
-  const map = {g:1,ml:1,kg:1000,l:1000,oz:28.35,lb:453.6,cup:240,cups:240,tbsp:15,tsp:5,piece:100,pieces:100,slice:30,slices:30,clove:5,cloves:5,handful:30};
-  return qty * (map[u] || 1);
-}
+  const name = nameMatch ? nameMatch[1].trim() : mealType;
+  const ingredients = ingMatch ? ingMatch[1].trim().split('\n').map(s=>s.trim()).filter(Boolean) : [];
+  const steps = methMatch ? methMatch[1].trim().split('\n').filter(s=>s.trim()).map(s=>s.replace(/^\d+\.\s*/,'')).filter(Boolean) : [];
+  const nutrStr = nutrMatch ? nutrMatch[1].trim() : '';
 
-function ingredientKcal(ing) {
-  const base = toBaseUnit(parseQty(ing.qty), ing.unit);
-  return Math.round((ing.kcalPer100 || 0) * base / 100);
-}
-function ingredientProt(ing) {
-  const base = toBaseUnit(parseQty(ing.qty), ing.unit);
-  return Math.round((ing.protPer100 || 0) * base / 100);
-}
-function recipeTotal() {
-  const active = _recipeIngredients.filter(i => !i.removed);
-  return {
-    kcal:    active.reduce((s,i) => s + ingredientKcal(i), 0),
-    protein: active.reduce((s,i) => s + ingredientProt(i), 0)
+  const kcalM = nutrStr.match(/(\d+)\s*kcal/i);
+  const protM = nutrStr.match(/(\d+)g?\s*protein/i);
+  const carbM = nutrStr.match(/(\d+)g?\s*carbs?/i);
+  const fatM  = nutrStr.match(/(\d+)g?\s*fat/i);
+  const kcalVal = kcalM ? parseInt(kcalM[1]) : null;
+  const deficitAfter = kcalVal !== null ? remaining - kcalVal : null;
+
+  // Check hated ingredients
+  const hatedFoods = (state.food&&state.food.hate||[]).map(h=>h.name.toLowerCase());
+  const isHated = txt => hatedFoods.some(h => txt.toLowerCase().includes(h));
+  const hatedFound = ingredients.filter(ing => isHated(ing));
+
+  // Store for log button
+  _currentRecipe = {
+    name,
+    kcal:    kcalM ? parseInt(kcalM[1]) : 0,
+    protein: protM ? parseInt(protM[1]) : 0,
+    carbs:   carbM ? parseInt(carbM[1]) : 0,
+    fat:     fatM  ? parseInt(fatM[1])  : 0,
+    fiber:   0
   };
-}
 
-function renderRecipeIngredients() {
-  const el = document.getElementById('recipe-ing-area');
-  if (!el) return;
-  const hatedFoods = (state.food&&state.food.hate||[]).map(h=>h.name.toLowerCase());
-  const isHated = n => hatedFoods.some(h => n.toLowerCase().includes(h));
+  let html = '<div class="recipe-content">';
+  html += '<div class="recipe-name">' + escHtml(name) + '</div>';
 
-  let rows = _recipeIngredients.map((ing, i) => {
-    if (ing.removed) return '';
-    const hated = isHated(ing.name);
-    const kcal  = ingredientKcal(ing);
-    const prot  = ingredientProt(ing);
-    return `<tr class="recipe-ing-row${hated?' hated':''}">
-      <td>
-        <input class="ri-qty-input" type="number" value="${parseQty(ing.qty)}" min="0" max="9999" step="1"
-               oninput="_recipeIngredients[${i}].qty=this.value;renderRecipeIngredients()" style="width:52px;font-size:12px;">
-        <span style="font-size:11px;color:var(--text-3);margin-left:3px;">${escHtml(ing.unit||'g')}</span>
-      </td>
-      <td>
-        <span class="ri-ing-name${hated?' ri-ing-hated':''}">${escHtml(ing.name)}</span>
-        ${hated ? `<span class="ri-ing-hated-tag">you dislike</span>` : ''}
-      </td>
-      <td class="ri-kcal">${kcal}</td>
-      <td class="ri-prot">${prot}g</td>
-      <td><button class="ri-del" onclick="_recipeIngredients[${i}].removed=true;renderRecipeIngredients()" title="Remove">✕</button></td>
-    </tr>`;
-  }).join('');
-
-  const t = recipeTotal();
-
-  el.innerHTML = `
-    <table class="recipe-ing-table">
-      <thead><tr>
-        <th style="width:90px;">Amount</th>
-        <th>Ingredient</th>
-        <th class="num" style="width:46px;">kcal</th>
-        <th class="num" style="width:44px;">prot</th>
-        <th style="width:28px;"></th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="recipe-totals-row">
-      <div class="rt-cell"><span class="rt-val" style="color:var(--yellow);">${t.kcal}</span><span class="rt-lbl">kcal</span></div>
-      <div class="rt-cell"><span class="rt-val" style="color:var(--green);">${t.protein}g</span><span class="rt-lbl">protein</span></div>
-    </div>
-    <div class="recipe-target-row">
-      <span>Scale to:</span>
-      <input type="number" id="target-kcal-input" placeholder="target kcal" min="100" max="3000" step="50">
-      <input type="number" id="target-prot-input" placeholder="min protein g" min="0" max="300" step="5">
-      <button class="recipe-scale-btn" onclick="scaleRecipeToTargets()">Scale →</button>
-    </div>`;
-}
-
-function scaleRecipeToTargets() {
-  const tKcal = parseInt(document.getElementById('target-kcal-input')?.value) || 0;
-  const tProt = parseInt(document.getElementById('target-prot-input')?.value) || 0;
-  const t = recipeTotal();
-  if (!t.kcal) return;
-
-  let ratio = 1;
-  if (tKcal > 0 && tProt > 0) {
-    // Balance: prioritise protein if deficit is larger relative to target
-    const kcalRatio = tKcal / t.kcal;
-    const protRatio = tProt / (t.protein || 1);
-    ratio = Math.max(kcalRatio, protRatio);  // pick the larger to satisfy both
-    // Cap at kcal limit
-    if (t.kcal * ratio > tKcal * 1.1) ratio = tKcal / t.kcal;
-  } else if (tKcal > 0) {
-    ratio = tKcal / t.kcal;
-  } else if (tProt > 0) {
-    ratio = tProt / (t.protein || 1);
+  // Hate warning banner
+  if (hatedFound.length) {
+    const hnames = hatedFound.slice(0,3).map(h=>{const m=h.match(/^[\d.\s\w]+\s+(.*)/);return m?m[1]:h;}).join(', ');
+    html += '<div style="padding:8px 10px;background:var(--red-dim);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius-sm);margin-bottom:8px;font-size:11px;color:var(--red);">⚠ Contains ingredients you dislike: <strong>' + escHtml(hnames) + '</strong><br><span style="color:var(--text-2);">Marked below — remove or regenerate without them.</span></div>';
   }
 
-  _recipeIngredients.forEach(ing => {
-    if (!ing.removed) {
-      ing.qty = Math.max(1, Math.round(parseQty(ing.qty) * ratio));
-    }
-  });
-  renderRecipeIngredients();
-}
-
-function renderRecipePanel(name, method) {
-  const el = document.getElementById('home-tip-text');
-  if (!el) return;
-  const hatedFoods = (state.food&&state.food.hate||[]).map(h=>h.name.toLowerCase());
-  const hatedIngs = _recipeIngredients.filter(i => hatedFoods.some(h => i.name.toLowerCase().includes(h)));
-
-  let html = `<div class="recipe-content">
-    <div class="recipe-name">${escHtml(name)}</div>`;
-
-  if (hatedIngs.length) {
-    html += `<div style="padding:8px 10px;background:var(--red-dim);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius-sm);margin-bottom:8px;font-size:11px;color:var(--red);">
-      ⚠ Contains ingredients you dislike: <strong>${escHtml(hatedIngs.map(i=>i.name).join(', '))}</strong> — marked in the list below.
-    </div>`;
-  }
-
-  html += `<div id="recipe-ing-area"></div>`;
-
-  if (method.length) {
-    html += `<div class="recipe-section"><div class="recipe-section-label">Method</div>`;
-    method.forEach((step, i) => {
-      html += `<div class="recipe-step"><span class="rs-num">${i+1}</span><span>${escHtml(step)}</span></div>`;
+  if (ingredients.length) {
+    html += '<div class="recipe-section"><div class="recipe-section-label">Ingredients</div>';
+    ingredients.forEach((ing, idx) => {
+      const hated = isHated(ing);
+      const qm = ing.match(/^([\d.]+\s*(?:g|ml|kg|l|cups?|tbsp|tsp|oz|lb|pieces?|slices?|cloves?|handful)?)\s+(.*)/i);
+      const qty = qm ? qm[1] : '';
+      const iname = qm ? qm[2] : ing;
+      html += '<div class="recipe-ingredient" id="ri-' + idx + '"' + (hated?' style="opacity:.6;"':'') + '>';
+      html += '<span class="ri-qty">' + escHtml(qty) + '</span>';
+      html += '<span class="ri-name' + (hated?' ri-hated':'') + '">' + escHtml(iname) + '</span>';
+      if (hated) html += '<span class="ri-hated-warn" onclick="rcRemoveHated(' + idx + ',\'' + escHtml(iname).replace(/'/g,"\'") + '\')">✕ Remove</span>';
+      html += '</div>';
     });
-    html += `</div>`;
+    html += '</div>';
   }
 
-  html += `<button class="recipe-log-btn" onclick="logCurrentRecipe()">+ Log this meal to Today</button>`;
-  html += `</div>`;
-  el.innerHTML = html;
-  renderRecipeIngredients();
+  if (steps.length) {
+    html += '<div class="recipe-section"><div class="recipe-section-label">Method</div>';
+    steps.forEach((step, i) => {
+      html += '<div class="recipe-step"><span class="rs-num">' + (i+1) + '</span><span>' + escHtml(step) + '</span></div>';
+    });
+    html += '</div>';
+  }
+
+  if (kcalM || protM || carbM || fatM) {
+    html += '<div class="recipe-section"><div class="recipe-section-label">Nutrition</div><div class="recipe-nutrition">';
+    if (kcalM) html += '<span class="rn-badge kcal">~' + kcalM[1] + ' kcal</span>';
+    if (protM) html += '<span class="rn-badge protein">' + protM[1] + 'g protein</span>';
+    if (carbM) html += '<span class="rn-badge carbs">' + carbM[1] + 'g carbs</span>';
+    if (fatM)  html += '<span class="rn-badge fat">' + fatM[1] + 'g fat</span>';
+    html += '</div>';
+    if (deficitAfter !== null) {
+      html += '<div class="recipe-deficit-note" style="margin-top:8px;">' + (deficitAfter > 0 ? '✓ Leaves you ' + deficitAfter + ' kcal in deficit' : '⚠ ' + Math.abs(deficitAfter) + ' kcal over TDEE') + '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<button class="recipe-log-btn" onclick="logCurrentRecipe()">+ Log this meal to Today</button>';
+  html += '</div>';
+  return html;
+}
+
+function rcRemoveHated(idx, name) {
+  const el = document.getElementById('ri-' + idx);
+  if (el) el.style.display = 'none';
 }
 
 function logCurrentRecipe() {
-  const t = recipeTotal();
-  if (!_recipeName) return;
-  const active = _recipeIngredients.filter(i=>!i.removed);
-  const desc = _recipeName + (active.length ? ' (' + active.slice(0,2).map(i=>i.name).join(', ') + (active.length>2?'…':'') + ')' : '');
-  state.currentDay.foods.push({ name: desc, kcal: t.kcal, protein: t.protein, carbs: 0, fat: 0, fiber: 0, id: Date.now() });
+  if (!_currentRecipe) return;
+  state.currentDay.foods.push({ name: _currentRecipe.name, kcal: _currentRecipe.kcal, protein: _currentRecipe.protein, carbs: _currentRecipe.carbs, fat: _currentRecipe.fat, fiber: _currentRecipe.fiber, id: Date.now() });
   renderLists(); updateDisplay(); updateMacros(); saveState();
   switchTab('today');
 }
 
-// Cached last recipe text to detect real "new" generation
-let _lastRecipeText = '';
 
-// Random variety seeds to ensure different recipe each call
-const TIP_SEEDS = ['light','hearty','quick','colourful','warming','refreshing','savoury','protein-packed','simple','Mediterranean-style','Asian-inspired','classic'];
+// Random variety seeds to force different results each time
+const TIP_SEEDS = ['light','hearty','quick','colourful','warming','refreshing','savoury','protein-packed','simple','different from last time'];
 let _lastSeed = '';
 function getRandomSeed() {
   let seed;
-  do { seed = TIP_SEEDS[Math.floor(Math.random() * TIP_SEEDS.length)]; } while (seed === _lastSeed);
+  do { seed = TIP_SEEDS[Math.floor(Math.random() * TIP_SEEDS.length)]; } while(seed === _lastSeed);
   _lastSeed = seed;
   return seed;
 }
@@ -1887,15 +1750,14 @@ async function fireHomeTip(userTriggered = false) {
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  // Use user-set value or default to remaining-200 to preserve deficit
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(Math.max(remaining - 200, 100), 800);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const w = state.profile.weight || 70;
   const prefs = prefContext();
   const seed = getRandomSeed();
-  const deficitTarget = Math.max(150, remaining - maxKcal);
+  // Ensure a healthy deficit is maintained
+  const deficitTarget = Math.max(200, remaining - maxKcal);
 
-  updateMealTipDefaults();
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
   document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
@@ -1903,7 +1765,7 @@ async function fireHomeTip(userTriggered = false) {
   try {
     const prompt = `Diet coach. Suggest one ${seed} ${mealType} for this person.
 Person: ${w}kg, eaten ${net} kcal today, TDEE ${tdee} kcal, ${remaining} kcal remaining.
-CRITICAL: The meal must be max ${maxKcal} kcal so they stay in caloric deficit (at least ${deficitTarget} kcal under TDEE today).
+CRITICAL: The meal must be max ${maxKcal} kcal so they stay in caloric deficit (at least ${deficitTarget} kcal under TDEE today). Never suggest something that puts them at or over TDEE.
 Must have at least ${minProt}g protein.${prefs}
 Reply with exactly 2 lines:
 Line 1: The meal name and its 3-4 key ingredients
@@ -1922,87 +1784,32 @@ async function generateRecipe(userTriggered = false) {
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  // Use user-set value or default to remaining-200 to preserve deficit
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(Math.max(remaining - 200, 100), 800);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
+  const prefs = prefContext();
   const seed = getRandomSeed();
+  const deficitTarget = Math.max(200, remaining - maxKcal);
 
-  // Pass hates as hard exclusions ONLY.
-  // Do NOT pass likes/loves to recipe AI — it treats them as mandatory ingredients,
-  // producing nonsense combos like "chia seeds in stir fry".
-  const hates = (state.food?.hate||[]).map(h => h.name).join(', ');
-  const hateStr = hates ? '\nHard exclusions — NEVER use: ' + hates + '.' : '';
-
-  updateMealTipDefaults();
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
-  document.getElementById('meal-tip-type').textContent = mealType.toUpperCase() + ' RECIPE';
+  document.getElementById('meal-tip-type').textContent = (mealType.toUpperCase() + ' RECIPE');
   document.getElementById('home-tip-text').innerHTML = '';
-  _recipeIngredients = [];
-  _recipeName = '';
-  _recipeMethod = [];
-
   try {
-    const prompt = 'You are a recipe writer. Generate a REAL ' + seed + ' ' + mealType + ' recipe.\n\n' +
-      'Start by thinking of a proper dish name (e.g. "Greek Chicken Bowl", "Shakshuka", "Salmon Teriyaki", "Lentil Soup"). ' +
-      'Then write the recipe for that dish. Ingredients must belong together culinarily — no random health foods thrown in.\n\n' +
-      'Constraints: max ' + maxKcal + ' kcal total, minimum ' + minProt + 'g protein.' + hateStr + '\n\n' +
-      'Reply in EXACTLY this format — no intro text, no commentary:\n' +
-      'RECIPE NAME: [dish name]\n' +
-      'INGREDIENTS:\n' +
-      '[qty] [unit] [ingredient] | [kcal per 100g/ml] | [protein g per 100g/ml]\n' +
-      'METHOD:\n' +
-      '1. [step]\n' +
-      '2. [step]\n' +
-      '3. [step]\n\n' +
-      'Units: g ml cup tbsp tsp piece slice clove';
-
-    const resp = await callAIWithTokens(prompt, 600);
+    const prompt = `Nutritionist chef. Write a ${seed}, easy ${mealType} recipe.
+Person: eaten ${net} kcal today, TDEE ${tdee} kcal, ${remaining} kcal remaining.
+CRITICAL: Total recipe must be max ${maxKcal} kcal. They need to stay in caloric deficit (~${deficitTarget} kcal under TDEE). Do not suggest ingredients that would push them over TDEE.
+Minimum ${minProt}g protein.${prefs}
+Use EXACTLY this format (no other text before or after):
+RECIPE NAME: [name]
+INGREDIENTS: [each ingredient on new line as "quantity unit ingredient"]
+METHOD: [each step on new line, numbered, max 3 steps]
+NUTRITION: ~[X] kcal | [X]g protein | [X]g carbs | [X]g fat`;
+    const resp = await callAI(prompt);
     if (!resp) return;
-    if (resp === _lastRecipeText) {
-      document.getElementById('home-tip-text').innerHTML =
-        '<p style="color:var(--text-3);font-size:12px;text-align:center;padding:12px;">Same recipe returned — tap again for a different one.</p>';
-      _lastRecipeText = '';
-      return;
-    }
-    _lastRecipeText = resp;
-
-    // Parse response
-    const nameM = resp.match(/RECIPE NAME:\s*(.+)/i);
-    const ingSection = resp.match(/INGREDIENTS:\n([\s\S]+?)(?=METHOD:)/i);
-    const methSection = resp.match(/METHOD:\n([\s\S]+?)$/i);
-
-    _recipeName = nameM ? nameM[1].trim() : mealType + ' recipe';
-
-    if (ingSection) {
-      const lines = ingSection[1].trim().split('\n').map(l => l.trim()).filter(Boolean);
-      _recipeIngredients = lines.map(line => {
-        const parts = line.split('|').map(p => p.trim());
-        const ingPart = parts[0] || '';
-        const kcalPer100 = parseFloat(parts[1]) || 0;
-        const protPer100 = parseFloat(parts[2]) || 0;
-        const qm = ingPart.match(/^([\d.]+)\s*(g|ml|kg|l|cup|cups|tbsp|tsp|oz|lb|piece|pieces|slice|slices|clove|cloves|handful)?\s+(.*)/i);
-        const qty  = qm ? qm[1] : '100';
-        const unit = qm ? (qm[2] || 'g') : 'g';
-        const name = qm ? qm[3].trim() : ingPart;
-        return { name, qty, unit, kcalPer100, protPer100, removed: false };
-      }).filter(i => i.name);
-    }
-
-    if (methSection) {
-      _recipeMethod = methSection[1].trim().split('\n')
-        .map(l => l.replace(/^\d+\.\s*/, '').trim())
-        .filter(Boolean);
-    }
-
-    renderRecipePanel(_recipeName, _recipeMethod);
-
-  } catch(e) {
-    document.getElementById('home-tip-text').innerHTML =
-      '<p style="color:var(--red);font-size:12px;padding:12px;">Error: ' + escHtml(e.message) + '</p>';
-  } finally { mealTipSetLoading(false); }
+    document.getElementById('home-tip-text').innerHTML = formatRecipe(resp, mealType, remaining);
+  } catch(e) { /* silent */ }
+  finally { mealTipSetLoading(false); }
 }
-
 
 // ═══════════════════════════════════════════════
 // AI: DAILY ADVICE (remaining nutrients to hit targets)
@@ -3299,158 +3106,106 @@ function updateSkinGrid() {
 // ═══════════════════════════════════════════════
 let rcIngredients = []; // [{name, amount, unit}]
 
-// ═══════════════════════════════════════════════
-// RECIPE CALCULATOR (text-based)
-// ═══════════════════════════════════════════════
-let _rcParsedData = null;  // stores last calculation result
+function rcAddIngredient(name='', amount='', unit='g') {
+  const id = Date.now() + Math.random();
+  rcIngredients.push({ id, name, amount, unit });
+  rcRenderIngredients();
+}
 
-function rcNewRecipe() {
-  document.getElementById('rc-name').value = '';
-  document.getElementById('rc-text').value = '';
-  document.getElementById('rc-result').style.display = 'none';
-  document.getElementById('rc-servings').value = '2';
-  document.getElementById('rc-my-serving').value = '1';
-  _rcParsedData = null;
-  document.getElementById('rc-name').focus();
+function rcRenderIngredients() {
+  const el = document.getElementById('rc-ingredients-list');
+  if (!el) return;
+  if (!rcIngredients.length) {
+    el.innerHTML = '<p style="font-size:11px;color:var(--text-3);text-align:center;padding:8px 0;">No ingredients yet — click Add Ingredient</p>';
+    return;
+  }
+  el.innerHTML = rcIngredients.map((ing, i) => `
+    <div class="rc-ing-row">
+      <input type="text"   value="${escHtml(ing.name)}"   placeholder="Ingredient…" oninput="rcIngredients[${i}].name=this.value" maxlength="60">
+      <input type="number" value="${ing.amount}" placeholder="0" min="0" max="9999" step="1" oninput="rcIngredients[${i}].amount=this.value" style="width:70px;">
+      <select onchange="rcIngredients[${i}].unit=this.value">
+        ${['g','ml','kg','l','cup','tbsp','tsp','oz','lb','piece','slice'].map(u=>`<option value="${u}"${ing.unit===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+      <button class="rc-ing-del" onclick="rcDeleteIngredient(${i})">✕</button>
+    </div>`).join('');
+}
+
+function rcDeleteIngredient(i) {
+  rcIngredients.splice(i, 1);
+  rcRenderIngredients();
 }
 
 async function rcCalculate() {
-  const name       = document.getElementById('rc-name').value.trim();
-  const text       = document.getElementById('rc-text').value.trim();
-  const servings   = parseFloat(document.getElementById('rc-servings').value)   || 2;
-  const myServings = parseFloat(document.getElementById('rc-my-serving').value) || 1;
-
-  if (!text) { alert('Please enter your recipe text first.'); return; }
+  const items = rcIngredients.filter(i => i.name.trim());
+  if (!items.length) { alert('Add at least one ingredient first.'); return; }
   if (state.ai.provider === 'none') { alert('Connect an AI in Settings to calculate nutrition.'); return; }
 
-  showAIStatus('● AI parsing your recipe…');
-  document.getElementById('rc-result').style.display = 'none';
+  const servings   = parseFloat(document.getElementById('rc-servings')?.value)    || 2;
+  const myServings = parseFloat(document.getElementById('rc-my-serving')?.value)   || 1;
+  const ratio = myServings / servings;
 
+  const ingList = items.map(i => `- ${i.amount}${i.unit} ${i.name}`).join('\n');
+
+  showAIStatus('● Calculating nutrition…');
   try {
-    const ratio = myServings / servings;
+    const prompt = `You are a precise nutritionist. Calculate total nutrition for this ENTIRE recipe (all ingredients combined):
+${ingList}
 
-    const prompt = `You are a nutritionist. Parse this recipe and calculate total nutrition for the WHOLE recipe.
+Then I will divide by servings myself. Reply ONLY with JSON:
+{"total_kcal":0,"total_protein":0,"total_carbs":0,"total_fat":0,"total_fiber":0,"tip":"one sentence on how to increase protein or lower calories in this recipe"}
 
-RECIPE TEXT:
-${text}
+Use standard USDA nutritional values. Be accurate.`;
+    const resp = await callAI(prompt);
+    if (!resp) throw new Error('No response');
+    const parsed = JSON.parse(resp.replace(/\`\`\`json|\`\`\`/g,'').trim());
 
-Use USDA nutritional values. Reply ONLY with this exact JSON (no markdown, no extra text):
-{"recipe_name":"Name Here","ing_list":"ingredient1 (kcal, protein g), ingredient2 (kcal, protein g)","total_kcal":0,"total_protein":0,"total_carbs":0,"total_fat":0,"total_fiber":0,"serving_suggestion":"1 plate approx 300g","tip":"One short improvement tip under 15 words"}
+    const kcal    = Math.round((parsed.total_kcal    || 0) * ratio);
+    const protein = Math.round((parsed.total_protein || 0) * ratio);
+    const carbs   = Math.round((parsed.total_carbs   || 0) * ratio);
+    const fat     = Math.round((parsed.total_fat     || 0) * ratio);
+    const fiber   = Math.round((parsed.total_fiber   || 0) * ratio);
 
-Rules: all numeric values are plain numbers. ing_list is a simple comma-separated string. tip under 15 words. No newlines inside any string value.`;
-
-    const resp = await callAIWithTokens(prompt, 700);
-    if (!resp) throw new Error('No response from AI');
-
-    // Extract JSON safely
-    const s = resp.indexOf('{');
-    const e = resp.lastIndexOf('}');
-    if (s === -1 || e <= s) throw new Error('AI returned no JSON. Try again.');
-    let jsonStr = resp.slice(s, e + 1);
-
-    // Fix unescaped newlines inside string values
-    jsonStr = jsonStr.replace(/("(?:[^"\\]|\\.)*")/g, m =>
-      m.replace(/\n/g,' ').replace(/\r/g,'').replace(/\t/g,' ')
-    );
-
-    const data = JSON.parse(jsonStr);
-    _rcParsedData = data;
-
-    const per = n => +((n || 0) * ratio).toFixed(1);
-
-    document.getElementById('rc-result').style.display = 'block';
-    document.getElementById('rc-result-title-name').textContent =
-      (name || data.recipe_name || 'My Recipe') + ' — per serving';
+    document.getElementById('rc-kcal').textContent    = kcal;
+    document.getElementById('rc-protein').textContent = protein + 'g';
+    document.getElementById('rc-carbs').textContent   = carbs   + 'g';
+    document.getElementById('rc-fat').textContent     = fat     + 'g';
     document.getElementById('rc-result-subtitle').textContent =
-      myServings + ' of ' + servings + ' servings';
-
-    document.getElementById('rc-kcal').textContent    = Math.round(per(data.total_kcal));
-    document.getElementById('rc-protein').textContent = per(data.total_protein) + 'g';
-    document.getElementById('rc-carbs').textContent   = per(data.total_carbs)   + 'g';
-    document.getElementById('rc-fat').textContent     = per(data.total_fat)     + 'g';
-
-    const servEl = document.getElementById('rc-ai-serving');
-    if (data.serving_suggestion) {
-      servEl.textContent = '✦ Suggested serving: ' + data.serving_suggestion;
-      servEl.style.display = 'block';
-    } else { servEl.style.display = 'none'; }
+      myServings === 1 ? `1 serving of ${servings}` : `${myServings} of ${servings} servings`;
 
     const tipEl = document.getElementById('rc-tip');
-    if (data.tip) {
-      tipEl.innerHTML = '<strong>💡 Improve:</strong> ' + escHtml(data.tip);
+    if (parsed.tip) {
+      tipEl.innerHTML = '<strong>💡 Improve:</strong> ' + escHtml(parsed.tip);
       tipEl.style.display = 'block';
     } else { tipEl.style.display = 'none'; }
 
-    if (data.ing_list) {
-      const bList = document.getElementById('rc-breakdown-list');
-      bList.innerHTML = data.ing_list.split(',').map(s => s.trim()).filter(Boolean).map(ing =>
-        '<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-2);">' + escHtml(ing) + '</div>'
-      ).join('');
-      document.getElementById('rc-breakdown').style.display = 'block';
-    }
+    // Store for logging
+    window._rcCurrentServing = { kcal, protein, carbs, fat, fiber };
 
-    document.getElementById('rc-log-btn').style.display  = 'block';
-    document.getElementById('rc-save-btn').style.display = 'block';
+    const logBtn = document.getElementById('rc-log-btn');
+    logBtn.style.display = 'block';
+    document.getElementById('rc-result').style.display = 'block';
 
-  } catch(err) {
-    console.error('rcCalculate:', err);
-    alert('Error: ' + err.message);
+  } catch(e) {
+    alert('Calculation error: ' + e.message);
   } finally { hideAIStatus(); }
 }
+
 function rcLogServing() {
-  if (!_rcParsedData) return;
-  const name       = document.getElementById('rc-name').value.trim() || _rcParsedData.recipe_name || 'My Recipe';
-  const servings   = parseFloat(document.getElementById('rc-servings').value)   || 2;
-  const myServings = parseFloat(document.getElementById('rc-my-serving').value) || 1;
-  const ratio = myServings / servings;
-  state.currentDay.foods.push({
-    name:    name + (myServings !== 1 ? ` (${myServings} serving)` : ''),
-    kcal:    Math.round(((_rcParsedData.total_kcal    || 0) * ratio)),
-    protein: Math.round(((_rcParsedData.total_protein || 0) * ratio)),
-    carbs:   Math.round(((_rcParsedData.total_carbs   || 0) * ratio)),
-    fat:     Math.round(((_rcParsedData.total_fat     || 0) * ratio)),
-    fiber:   Math.round(((_rcParsedData.total_fiber   || 0) * ratio)),
-    id: Date.now()
-  });
+  const s = window._rcCurrentServing;
+  if (!s) return;
+  const items = rcIngredients.filter(i => i.name.trim());
+  const myServ = parseFloat(document.getElementById('rc-my-serving')?.value) || 1;
+  const total  = parseFloat(document.getElementById('rc-servings')?.value)   || 2;
+  const name   = items.length ? items.slice(0,2).map(i=>i.name).join(' & ') + ' dish' : 'My recipe';
+  state.currentDay.foods.push({ name: name + (myServ!==1?` (${myServ}/${total} serving)`:''), kcal: s.kcal, protein: s.protein, carbs: s.carbs, fat: s.fat, fiber: s.fiber, id: Date.now() });
   renderLists(); updateDisplay(); updateMacros(); saveState();
   switchTab('today');
-  showAIResponse('✓ Logged: ' + name);
 }
 
-function rcSaveToGoTo() {
-  if (!_rcParsedData) return;
-  const name       = document.getElementById('rc-name').value.trim() || _rcParsedData.recipe_name || 'My Recipe';
-  const servings   = parseFloat(document.getElementById('rc-servings').value)   || 2;
-  const myServings = parseFloat(document.getElementById('rc-my-serving').value) || 1;
-  const ratio = myServings / servings;
-  const entry = {
-    name:    name + ' (' + (_rcParsedData.serving_suggestion || (myServings + ' serving') ) + ')',
-    kcal:    Math.round((_rcParsedData.total_kcal    || 0) * ratio),
-    protein: Math.round((_rcParsedData.total_protein || 0) * ratio),
-    carbs:   Math.round((_rcParsedData.total_carbs   || 0) * ratio),
-    fat:     Math.round((_rcParsedData.total_fat     || 0) * ratio),
-    fiber:   Math.round((_rcParsedData.total_fiber   || 0) * ratio),
-    id: Date.now()
-  };
-  if (!state.food) state.food = { love:[], hate:[], goto:[] };
-  // Avoid exact duplicates
-  if (!state.food.goto.find(g => g.name === entry.name)) {
-    state.food.goto.push(entry);
-    renderFoodPrefs();
-    saveState();
-    const btn = document.getElementById('rc-save-btn');
-    btn.textContent = '✓ Saved!';
-    btn.style.background = 'var(--green-dim)';
-    btn.style.borderColor = 'rgba(34,197,94,.3)';
-    btn.style.color = 'var(--green)';
-    setTimeout(() => {
-      btn.textContent = '⭐ Save to Go-To Meals';
-      btn.style.background = btn.style.borderColor = btn.style.color = '';
-    }, 2000);
-  } else {
-    showAIResponse('This recipe is already in your Go-To Meals.');
-  }
-}
+window.rcAddIngredient    = rcAddIngredient;
+window.rcDeleteIngredient = rcDeleteIngredient;
+window.rcCalculate        = rcCalculate;
+window.rcLogServing       = rcLogServing;
 
 // init empty ingredient rows on food tab open
 const _origSwitchTab = window.switchTab;
