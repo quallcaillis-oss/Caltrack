@@ -287,7 +287,8 @@ table.hist-table .td-red{color:var(--red);}
 .ri-ing-name{font-size:12px;color:var(--text);}
 .ri-ing-hated{text-decoration:line-through;color:var(--red);opacity:.7;}
 .ri-ing-hated-tag{font-size:9px;color:var(--red);background:var(--red-dim);border-radius:3px;padding:1px 5px;margin-left:4px;}
-.ri-qty-input{width:58px;padding:4px 6px;font-family:"DM Mono",monospace;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;text-align:center;}
+.ri-qty-input{width:52px;padding:3px 5px;font-family:"DM Mono",monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;text-align:center;}
+.ri-qty-input:focus{border-color:var(--cyan);}
 .ri-qty-input:focus{border-color:var(--cyan);}
 .ri-kcal{font-family:"DM Mono",monospace;font-size:12px;color:var(--yellow);text-align:right;min-width:42px;}
 .ri-prot{font-family:"DM Mono",monospace;font-size:12px;color:var(--green);text-align:right;min-width:38px;}
@@ -577,19 +578,21 @@ table.hist-table .td-red{color:var(--red);}
         </div>
       </div>
       <div class="meal-tip-body" id="meal-tip-body">
-        <div id="meal-tip-loading">✦ Generating…</div>
-        <div id="home-tip-text"></div>
-        <div class="meal-tip-controls">
+        <!-- Controls FIRST — set targets before generating -->
+        <div class="meal-tip-controls" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
           <div class="meal-tip-ctrl">
             <span>Max kcal</span>
-            <input type="number" id="tip-max-kcal" placeholder="auto" min="100" max="2000" step="50">
+            <input type="number" id="tip-max-kcal" placeholder="—" min="100" max="3000" step="50">
           </div>
           <div class="meal-tip-ctrl">
             <span>Min protein</span>
-            <input type="number" id="tip-min-protein" placeholder="auto" min="0" max="200" step="5">
+            <input type="number" id="tip-min-protein" placeholder="—" min="0" max="300" step="5">
             <span>g</span>
           </div>
+          <span id="tip-budget-hint" style="font-size:10px;color:var(--text-3);margin-left:auto;"></span>
         </div>
+        <div id="meal-tip-loading">✦ Generating…</div>
+        <div id="home-tip-text"></div>
       </div>
     </div>
     <div id="warning-banner">⚠ Caloric intake exceeds your metabolic baseline</div>
@@ -1349,6 +1352,7 @@ function calcBurned() { return state.currentDay.exercises.reduce((s,e)=>s+e.kcal
 function calcNet()    { return calcIntake() - calcBurned(); }
 
 function updateDisplay() {
+  if (document.getElementById('meal-tip-panel')?.style.display === 'block') updateMealTipDefaults();
   const intake = calcIntake(), burned = calcBurned(), net = calcNet();
   const baseline = state.tdee || state.bmr;
   document.getElementById('lcd-intake').textContent = intake;
@@ -1634,6 +1638,34 @@ function toggleMealTip(e) {
   document.getElementById('meal-tip-arrow').classList.toggle('collapsed', mealTipCollapsed);
 }
 
+// Populate controls with sensible defaults based on current deficit budget
+function updateMealTipDefaults() {
+  const tdee      = state.tdee || state.bmr || 2000;
+  const net       = calcNet();
+  const remaining = Math.max(0, tdee - net);
+
+  // Default max kcal = remaining budget minus a 200 kcal safety buffer to stay in deficit
+  // Cap at 800 so we never suggest a huge meal by default
+  const defaultKcal = Math.min(Math.max(remaining - 200, 100), 800);
+  const kcalEl = document.getElementById('tip-max-kcal');
+  const protEl = document.getElementById('tip-min-protein');
+  const hint   = document.getElementById('tip-budget-hint');
+
+  // Only set placeholder/value if user hasn't already typed something
+  if (kcalEl && !kcalEl.value) kcalEl.placeholder = defaultKcal + ' kcal left';
+  if (protEl && !protEl.value) protEl.placeholder  = '25';
+
+  if (hint) {
+    if (remaining > 0) {
+      hint.textContent = remaining + ' kcal remaining today';
+      hint.style.color = remaining < 300 ? 'var(--red)' : 'var(--text-3)';
+    } else {
+      hint.textContent = 'Over TDEE today';
+      hint.style.color = 'var(--red)';
+    }
+  }
+}
+
 function mealTipSetLoading(on) {
   const loadEl = document.getElementById('meal-tip-loading');
   const btnNew = document.getElementById('btn-new-tip');
@@ -1729,7 +1761,7 @@ function renderRecipeIngredients() {
     return `<tr class="recipe-ing-row${hated?' hated':''}">
       <td>
         <input class="ri-qty-input" type="number" value="${parseQty(ing.qty)}" min="0" max="9999" step="1"
-               oninput="_recipeIngredients[${i}].qty=this.value;renderRecipeIngredients()" style="width:52px;">
+               oninput="_recipeIngredients[${i}].qty=this.value;renderRecipeIngredients()" style="width:52px;font-size:12px;">
         <span style="font-size:11px;color:var(--text-3);margin-left:3px;">${escHtml(ing.unit||'g')}</span>
       </td>
       <td>
@@ -1855,13 +1887,15 @@ async function fireHomeTip(userTriggered = false) {
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
+  // Use user-set value or default to remaining-200 to preserve deficit
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(Math.max(remaining - 200, 100), 800);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const w = state.profile.weight || 70;
   const prefs = prefContext();
   const seed = getRandomSeed();
-  const deficitTarget = Math.max(200, remaining - maxKcal);
+  const deficitTarget = Math.max(150, remaining - maxKcal);
 
+  updateMealTipDefaults();
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
   document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
@@ -1888,7 +1922,8 @@ async function generateRecipe(userTriggered = false) {
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
+  // Use user-set value or default to remaining-200 to preserve deficit
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(Math.max(remaining - 200, 100), 800);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const seed = getRandomSeed();
 
@@ -1898,6 +1933,7 @@ async function generateRecipe(userTriggered = false) {
   const hates = (state.food?.hate||[]).map(h => h.name).join(', ');
   const hateStr = hates ? '\nHard exclusions — NEVER use: ' + hates + '.' : '';
 
+  updateMealTipDefaults();
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
   document.getElementById('meal-tip-type').textContent = mealType.toUpperCase() + ' RECIPE';
