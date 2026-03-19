@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="CalTrack">
 <meta name="theme-color" content="#080b12" id="meta-theme-color">
 <link rel="manifest" id="pwa-manifest">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='40' height='40' fill='%231A1A1A'/%3E%3Crect x='6' y='8' width='28' height='8' fill='%23F5C518'/%3E%3Crect x='16' y='16' width='8' height='18' fill='%23F5C518'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='180' height='180' fill='%231A1A1A'/%3E%3Crect x='27' y='36' width='126' height='36' fill='%23F5C518'/%3E%3Crect x='72' y='72' width='36' height='81' fill='%23F5C518'/%3E%3C/svg%3E">
 <title>CalTrack</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -271,20 +273,55 @@ table.hist-table .td-red{color:var(--red);}
 .pref-add-row input::placeholder{color:var(--text-3);}
 
 /* ── MEAL TIP REDESIGN ── */
-#meal-tip-panel{margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-.meal-tip-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0;}
+#meal-tip-panel{margin-bottom:12px;background:var(--card);border:1px solid var(--border-hi);border-radius:var(--radius);overflow:hidden;transition:var(--t);}
+.meal-tip-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;}
+.meal-tip-header:hover{background:var(--card-hi);}
+.meal-tip-left{display:flex;align-items:center;gap:8px;}
 .meal-tip-type{font-size:10px;font-weight:700;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;}
+.meal-tip-collapse{font-size:12px;color:var(--text-3);transition:transform .22s ease;display:inline-block;}
+.meal-tip-collapse.collapsed{transform:rotate(180deg);}
 .meal-tip-actions{display:flex;gap:6px;}
-.meal-tip-btn{font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border-hi);background:var(--surface);color:var(--text-2);cursor:pointer;transition:var(--t);font-family:'Outfit',sans-serif;}
-.meal-tip-btn:hover{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-dim);}
-.meal-tip-btn.loading{opacity:.5;pointer-events:none;}
-.meal-tip-body{padding:10px 14px 12px;}
-.meal-tip-text{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;}
-.meal-tip-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.meal-tip-btn{font-size:10px;font-weight:700;padding:5px 11px;border-radius:6px;border:1px solid var(--border-hi);background:var(--surface);color:var(--text-2);cursor:pointer;transition:var(--t);font-family:'Outfit',sans-serif;letter-spacing:.3px;}
+.meal-tip-btn:hover{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-dim);box-shadow:0 0 10px var(--cyan-dim);}
+.meal-tip-btn.active-type{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-dim);}
+.meal-tip-btn.loading{opacity:.4;pointer-events:none;}
+.meal-tip-body{padding:12px 14px 14px;}
+.meal-tip-body.hidden{display:none;}
+
+/* Tip formatting */
+.tip-content{font-size:13px;color:var(--text);line-height:1.7;margin-bottom:10px;}
+.tip-content .tip-name{font-size:15px;font-weight:700;color:var(--text);display:block;margin-bottom:4px;}
+.tip-content .tip-why{font-size:12px;color:var(--text-2);line-height:1.5;}
+.tip-content .tip-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:4px;margin-bottom:6px;}
+.tip-content .badge-kcal{background:var(--yellow-dim);color:var(--yellow);border:1px solid rgba(245,158,11,.3);}
+.tip-content .badge-protein{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.tip-content .badge-deficit{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(6,214,199,.3);}
+
+/* Recipe formatting */
+.recipe-content{font-size:12px;color:var(--text);line-height:1.6;}
+.recipe-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:-.2px;}
+.recipe-section{margin-bottom:10px;}
+.recipe-section-label{font-size:9px;font-weight:700;color:var(--text-3);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px;}
+.recipe-section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.recipe-ingredient{display:flex;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;}
+.recipe-ingredient:last-child{border-bottom:none;}
+.recipe-ingredient .ri-qty{color:var(--cyan);font-family:'DM Mono',monospace;font-size:11px;min-width:60px;flex-shrink:0;}
+.recipe-ingredient .ri-name{color:var(--text);}
+.recipe-step{display:flex;gap:10px;padding:5px 0;font-size:12px;color:var(--text-2);line-height:1.5;}
+.recipe-step .rs-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--cyan);font-weight:700;min-width:18px;flex-shrink:0;margin-top:1px;}
+.recipe-nutrition{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.rn-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;}
+.rn-badge.kcal{background:var(--yellow-dim);color:var(--yellow);}
+.rn-badge.protein{background:var(--green-dim);color:var(--green);}
+.rn-badge.carbs{background:var(--violet-dim);color:var(--violet);}
+.rn-badge.fat{background:rgba(156,163,175,.1);color:var(--text-2);}
+.recipe-deficit-note{font-size:10px;color:var(--green);margin-top:8px;padding:6px 10px;background:var(--green-dim);border-radius:6px;border:1px solid rgba(34,197,94,.2);}
+
+.meal-tip-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border);margin-top:4px;}
 .meal-tip-ctrl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);}
 .meal-tip-ctrl input{width:70px;padding:5px 8px;font-family:'DM Mono',monospace;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;text-align:center;}
 .meal-tip-ctrl input:focus{border-color:var(--cyan);}
-#meal-tip-loading{font-size:11px;color:var(--text-3);text-align:center;padding:12px;display:none;animation:pulse 1.5s infinite;}
+#meal-tip-loading{font-size:11px;color:var(--cyan);text-align:center;padding:16px;display:none;animation:pulse 1.5s infinite;letter-spacing:1px;}
 
 /* ── CUMULATIVE HEALTH TIP ── */
 .cumhealth-inner{font-size:12px;color:var(--text-2);line-height:1.6;padding:10px 12px;background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(6,214,199,0.04));border:1px solid rgba(34,197,94,0.2);border-left:3px solid var(--green);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
@@ -343,7 +380,7 @@ table.hist-table .td-red{color:var(--red);}
 /* ── AUTH ── */
 #auth-screen{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(6,214,199,0.08) 0%,transparent 70%);}
 .auth-box{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--border-hi);border-radius:20px;padding:28px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.5);}
-.auth-logo{font-size:28px;font-weight:700;background:linear-gradient(135deg,#fff 30%,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
+.auth-logo{font-size:28px;font-weight:800;color:var(--text);margin-bottom:4px;letter-spacing:-.5px;}
 .auth-sub{font-size:12px;color:var(--text-2);margin-bottom:24px;letter-spacing:.5px;}
 .auth-tabs{display:flex;background:var(--card);border-radius:var(--radius-sm);padding:3px;gap:2px;margin-bottom:20px;}
 .auth-tab{flex:1;padding:8px;border:none;background:transparent;color:var(--text-2);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border-radius:6px;transition:var(--t);}
@@ -379,7 +416,21 @@ table.hist-table .td-red{color:var(--red);}
 <!-- AUTH SCREEN -->
 <div id="auth-screen">
   <div class="auth-box">
-    <div class="auth-logo">CalTrack</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+      <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <rect width="40" height="40" rx="0" fill="#1A1A1A"/>
+  <!-- Rand T: thick top bar, centered stem, pure geometry -->
+  <!-- Horizontal bar -->
+  <rect x="6" y="8" width="28" height="8" fill="#F5C518"/>
+  <!-- Vertical stem — centered, runs to bottom -->
+  <rect x="16" y="16" width="8" height="18" fill="#F5C518"/>
+</svg>
+      <div style="line-height:1;">
+        <div style="font-size:26px;letter-spacing:-.5px;font-weight:800;">
+          <span style="font-weight:300;color:var(--text-2);">Cal</span><span style="font-weight:800;color:var(--text);">Track</span>
+        </div>
+      </div>
+    </div>
     <div class="auth-sub">Sign in to sync your data across devices</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-signin" onclick="authSwitchTab('signin')">Sign In</button>
@@ -421,7 +472,21 @@ table.hist-table .td-red{color:var(--red);}
 <div id="chassis">
 
   <div id="titlebar">
-    <h1>CalTrack</h1>
+    <!-- Paul Rand inspired logo: bold geometric, primary shapes, flat -->
+    <div id="app-logo" style="display:flex;align-items:center;gap:9px;">
+      <svg width="32" height="32" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+  <rect width="40" height="40" rx="0" fill="#1A1A1A"/>
+  <!-- Rand T: thick top bar, centered stem, pure geometry -->
+  <!-- Horizontal bar -->
+  <rect x="6" y="8" width="28" height="8" fill="#F5C518"/>
+  <!-- Vertical stem — centered, runs to bottom -->
+  <rect x="16" y="16" width="8" height="18" fill="#F5C518"/>
+</svg>
+      <!-- Modern startup wordmark: weight contrast, tight tracking -->
+      <h1 style="font-size:19px;letter-spacing:-.4px;line-height:1;">
+        <span style="font-weight:300;color:rgba(255,255,255,.7);-webkit-text-fill-color:rgba(255,255,255,.7);">Cal</span><span style="font-weight:800;color:white;-webkit-text-fill-color:white;letter-spacing:-.6px;">Track</span>
+      </h1>
+    </div>
     <div class="title-right">
       <div id="user-badge" onclick="openSettings()" title="Account">
         <div class="user-dot"></div>
@@ -446,24 +511,27 @@ table.hist-table .td-red{color:var(--red);}
     <div id="date-display">——</div>
     <!-- MEAL TIP PANEL -->
     <div id="meal-tip-panel" style="display:none;">
-      <div class="meal-tip-header">
-        <span class="meal-tip-type" id="meal-tip-type">Meal Suggestion</span>
-        <div class="meal-tip-actions">
-          <button class="meal-tip-btn" id="btn-new-tip" onclick="fireHomeTip()">✦ New Tip</button>
-          <button class="meal-tip-btn" id="btn-gen-recipe" onclick="generateRecipe()">📋 Recipe</button>
+      <div class="meal-tip-header" onclick="toggleMealTip(event)">
+        <div class="meal-tip-left">
+          <span class="meal-tip-collapse" id="meal-tip-arrow">⌃</span>
+          <span class="meal-tip-type" id="meal-tip-type">Meal Suggestion</span>
+        </div>
+        <div class="meal-tip-actions" onclick="event.stopPropagation()">
+          <button class="meal-tip-btn" id="btn-new-tip" onclick="fireHomeTip(true)">✦ New Tip</button>
+          <button class="meal-tip-btn" id="btn-gen-recipe" onclick="generateRecipe(true)">📋 Recipe</button>
         </div>
       </div>
-      <div class="meal-tip-body">
+      <div class="meal-tip-body" id="meal-tip-body">
         <div id="meal-tip-loading">✦ Generating…</div>
-        <div class="meal-tip-text" id="home-tip-text"></div>
+        <div id="home-tip-text"></div>
         <div class="meal-tip-controls">
           <div class="meal-tip-ctrl">
             <span>Max kcal</span>
-            <input type="number" id="tip-max-kcal" placeholder="600" min="100" max="2000" step="50">
+            <input type="number" id="tip-max-kcal" placeholder="auto" min="100" max="2000" step="50">
           </div>
           <div class="meal-tip-ctrl">
             <span>Min protein</span>
-            <input type="number" id="tip-min-protein" placeholder="30" min="0" max="200" step="5">
+            <input type="number" id="tip-min-protein" placeholder="auto" min="0" max="200" step="5">
             <span>g</span>
           </div>
         </div>
@@ -1439,70 +1507,200 @@ function debouncedHomeTip() {
   _homeTipTimer = setTimeout(fireHomeTip, 2000);
 }
 
+// ── Meal tip collapse toggle ──
+let mealTipCollapsed = false;
+function toggleMealTip(e) {
+  if (e && e.target && e.target.classList.contains('meal-tip-btn')) return;
+  mealTipCollapsed = !mealTipCollapsed;
+  document.getElementById('meal-tip-body').classList.toggle('hidden', mealTipCollapsed);
+  document.getElementById('meal-tip-arrow').classList.toggle('collapsed', mealTipCollapsed);
+}
+
 function mealTipSetLoading(on) {
   const loadEl = document.getElementById('meal-tip-loading');
-  const textEl = document.getElementById('home-tip-text');
   const btnNew = document.getElementById('btn-new-tip');
   const btnRec = document.getElementById('btn-gen-recipe');
   if (loadEl) loadEl.style.display = on ? 'block' : 'none';
-  if (textEl) textEl.style.opacity = on ? '0.3' : '1';
   if (btnNew) btnNew.classList.toggle('loading', on);
   if (btnRec) btnRec.classList.toggle('loading', on);
+  // Expand body if collapsed when loading
+  if (on && mealTipCollapsed) {
+    mealTipCollapsed = false;
+    document.getElementById('meal-tip-body').classList.remove('hidden');
+    document.getElementById('meal-tip-arrow').classList.remove('collapsed');
+  }
 }
 
-async function fireHomeTip() {
+function getMealTime() {
+  const h = new Date().getHours();
+  if (h < 10) return 'breakfast';
+  if (h < 12) return 'mid-morning snack';
+  if (h < 15) return 'lunch';
+  if (h < 18) return 'afternoon snack';
+  if (h < 21) return 'dinner';
+  return 'evening snack';
+}
+
+function formatTip(resp, mealType, remaining, tdee) {
+  // Parse "Meal name. Why it fits." into structured HTML
+  const lines = resp.trim().split('\n').filter(l => l.trim());
+  const name  = lines[0] || '';
+  const why   = lines.slice(1).join(' ') || '';
+  // Extract kcal/protein numbers from text
+  const kcalMatch = resp.match(/(\d+)\s*kcal/i);
+  const protMatch = resp.match(/(\d+)g?\s*protein/i);
+  const kcalVal  = kcalMatch ? kcalMatch[1] : null;
+  const protVal  = protMatch ? protMatch[1] : null;
+  const deficitAfter = remaining - (kcalVal ? parseInt(kcalVal) : 0);
+  const defStr = deficitAfter > 0 ? `${deficitAfter} kcal still in deficit` : `${Math.abs(deficitAfter)} kcal over TDEE`;
+  const defCls = deficitAfter > 0 ? 'badge-deficit' : '';
+
+  return `<div class="tip-content">
+    <span class="tip-name">${escHtml(name)}</span>
+    ${kcalVal ? `<span class="tip-badge badge-kcal">~${kcalVal} kcal</span>` : ''}
+    ${protVal ? `<span class="tip-badge badge-protein">${protVal}g protein</span>` : ''}
+    ${deficitAfter !== undefined ? `<span class="tip-badge ${defCls}">${defStr}</span>` : ''}
+    ${why ? `<div class="tip-why">${escHtml(why)}</div>` : ''}
+  </div>`;
+}
+
+function formatRecipe(resp, mealType, remaining) {
+  // Parse structured recipe response into rich HTML
+  const nameMatch  = resp.match(/RECIPE NAME:\s*(.+)/i);
+  const ingMatch   = resp.match(/INGREDIENTS:\s*([\s\S]+?)(?=METHOD:|NUTRITION:|$)/i);
+  const methMatch  = resp.match(/METHOD:\s*([\s\S]+?)(?=NUTRITION:|$)/i);
+  const nutrMatch  = resp.match(/NUTRITION:\s*(.+)/i);
+
+  const name = nameMatch ? nameMatch[1].trim() : mealType;
+  const ingredients = ingMatch ? ingMatch[1].trim().split(/,|\n/).map(s => s.trim()).filter(Boolean) : [];
+  const steps = methMatch ? methMatch[1].trim().split(/\n|\d+\./).map(s => s.trim()).filter(Boolean) : [];
+  const nutrStr = nutrMatch ? nutrMatch[1].trim() : '';
+
+  // Parse nutrition
+  const kcalM  = nutrStr.match(/(\d+)\s*kcal/i);
+  const protM  = nutrStr.match(/(\d+)g?\s*protein/i);
+  const carbM  = nutrStr.match(/(\d+)g?\s*carbs?/i);
+  const fatM   = nutrStr.match(/(\d+)g?\s*fat/i);
+  const kcalVal = kcalM ? parseInt(kcalM[1]) : null;
+  const deficitAfter = kcalVal ? remaining - kcalVal : null;
+
+  let html = `<div class="recipe-content">
+    <div class="recipe-name">${escHtml(name)}</div>`;
+
+  if (ingredients.length) {
+    html += `<div class="recipe-section">
+      <div class="recipe-section-label">Ingredients</div>`;
+    ingredients.forEach(ing => {
+      // Try to split "200g chicken" into qty + name
+      const qtyM = ing.match(/^([\d.]+\s*(?:g|ml|kg|l|cup|tbsp|tsp|oz|lb|piece|slice|clove|handful)?)\s+(.*)/i);
+      if (qtyM) {
+        html += `<div class="recipe-ingredient"><span class="ri-qty">${escHtml(qtyM[1])}</span><span class="ri-name">${escHtml(qtyM[2])}</span></div>`;
+      } else {
+        html += `<div class="recipe-ingredient"><span class="ri-name" style="margin-left:66px">${escHtml(ing)}</span></div>`;
+      }
+    });
+    html += `</div>`;
+  }
+
+  if (steps.length) {
+    html += `<div class="recipe-section">
+      <div class="recipe-section-label">Method</div>`;
+    steps.forEach((step, i) => {
+      html += `<div class="recipe-step"><span class="rs-num">${i+1}</span><span>${escHtml(step)}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (kcalM || protM || carbM || fatM) {
+    html += `<div class="recipe-section">
+      <div class="recipe-section-label">Nutrition</div>
+      <div class="recipe-nutrition">
+        ${kcalM ? `<span class="rn-badge kcal">~${kcalM[1]} kcal</span>` : ''}
+        ${protM ? `<span class="rn-badge protein">${protM[1]}g protein</span>` : ''}
+        ${carbM ? `<span class="rn-badge carbs">${carbM[1]}g carbs</span>` : ''}
+        ${fatM  ? `<span class="rn-badge fat">${fatM[1]}g fat</span>` : ''}
+      </div>
+      ${deficitAfter !== null ? `<div class="recipe-deficit-note">${deficitAfter > 0 ? `✓ Leaves you ${deficitAfter} kcal in deficit for the day` : `⚠ This puts you ${Math.abs(deficitAfter)} kcal over TDEE`}</div>` : ''}
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// Random variety seeds to force different results each time
+const TIP_SEEDS = ['light','hearty','quick','colourful','warming','refreshing','savoury','protein-packed','simple','different from last time'];
+let _lastSeed = '';
+function getRandomSeed() {
+  let seed;
+  do { seed = TIP_SEEDS[Math.floor(Math.random() * TIP_SEEDS.length)]; } while(seed === _lastSeed);
+  _lastSeed = seed;
+  return seed;
+}
+
+async function fireHomeTip(userTriggered = false) {
   if (state.ai.provider === 'none') return;
-  const hour = new Date().getHours();
-  const mealType = hour < 10 ? 'breakfast' : hour < 13 ? 'mid-morning snack' : hour < 16 ? 'lunch' : hour < 19 ? 'afternoon snack' : 'dinner';
+  const mealType = getMealTime();
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 600);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const w = state.profile.weight || 70;
   const prefs = prefContext();
+  const seed = getRandomSeed();
+  // Ensure a healthy deficit is maintained
+  const deficitTarget = Math.max(200, remaining - maxKcal);
 
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
+  document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
+  document.getElementById('home-tip-text').innerHTML = '';
   try {
-    const prompt = `You are a diet coach. Suggest one specific ${mealType} for this person.
-Stats: ${w}kg, ${remaining} kcal remaining today, TDEE ${tdee} kcal.
-Constraints: max ${maxKcal} kcal, at least ${minProt}g protein.${prefs}
-Reply in 2 sentences max. Sentence 1: the meal name and key ingredients. Sentence 2: kcal and protein estimate + why it fits. No emojis, no preamble.`;
+    const prompt = `Diet coach. Suggest one ${seed} ${mealType} for this person.
+Person: ${w}kg, eaten ${net} kcal today, TDEE ${tdee} kcal, ${remaining} kcal remaining.
+CRITICAL: The meal must be max ${maxKcal} kcal so they stay in caloric deficit (at least ${deficitTarget} kcal under TDEE today). Never suggest something that puts them at or over TDEE.
+Must have at least ${minProt}g protein.${prefs}
+Reply with exactly 2 lines:
+Line 1: The meal name and its 3-4 key ingredients
+Line 2: Estimated kcal and protein, plus one sentence on why it fits their remaining budget
+No emojis, no preamble, no "Here is" intro.`;
     const resp = await callAI(prompt);
     if (!resp) return;
-    document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
-    document.getElementById('home-tip-text').textContent = resp.trim().replace(/^["']|["']$/g,'');
+    document.getElementById('home-tip-text').innerHTML = formatTip(resp, mealType, remaining, tdee);
   } catch(e) { /* silent */ }
   finally { mealTipSetLoading(false); }
 }
 
-async function generateRecipe() {
+async function generateRecipe(userTriggered = false) {
   if (state.ai.provider === 'none') { showAIResponse('Connect an AI in Settings first.'); return; }
-  const hour = new Date().getHours();
-  const mealType = hour < 10 ? 'breakfast' : hour < 13 ? 'snack' : hour < 16 ? 'lunch' : hour < 19 ? 'snack' : 'dinner';
+  const mealType = getMealTime();
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
   const remaining = Math.max(0, tdee - net);
-  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 600);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
   const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const prefs = prefContext();
+  const seed = getRandomSeed();
+  const deficitTarget = Math.max(200, remaining - maxKcal);
 
   mealTipSetLoading(true);
   document.getElementById('meal-tip-panel').style.display = 'block';
-  document.getElementById('meal-tip-type').textContent = 'RECIPE';
+  document.getElementById('meal-tip-type').textContent = (mealType.toUpperCase() + ' RECIPE');
+  document.getElementById('home-tip-text').innerHTML = '';
   try {
-    const prompt = `You are a nutritionist chef. Write a quick recipe for a ${mealType}.
-Constraints: max ${maxKcal} kcal total, at least ${minProt}g protein.${prefs}
-Format:
+    const prompt = `Nutritionist chef. Write a ${seed}, easy ${mealType} recipe.
+Person: eaten ${net} kcal today, TDEE ${tdee} kcal, ${remaining} kcal remaining.
+CRITICAL: Total recipe must be max ${maxKcal} kcal. They need to stay in caloric deficit (~${deficitTarget} kcal under TDEE). Do not suggest ingredients that would push them over TDEE.
+Minimum ${minProt}g protein.${prefs}
+Use EXACTLY this format (no other text before or after):
 RECIPE NAME: [name]
-INGREDIENTS: [comma-separated list with quantities]
-METHOD: [2-3 steps max, very brief]
-NUTRITION: ~[kcal] kcal | [protein]g protein | [carbs]g carbs | [fat]g fat
-Keep it short and practical. No intro, no outro.`;
+INGREDIENTS: [each ingredient on new line as "quantity unit ingredient"]
+METHOD: [each step on new line, numbered, max 3 steps]
+NUTRITION: ~[X] kcal | [X]g protein | [X]g carbs | [X]g fat`;
     const resp = await callAI(prompt);
     if (!resp) return;
-    document.getElementById('home-tip-text').textContent = resp.trim();
+    document.getElementById('home-tip-text').innerHTML = formatRecipe(resp, mealType, remaining);
   } catch(e) { /* silent */ }
   finally { mealTipSetLoading(false); }
 }
