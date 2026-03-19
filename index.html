@@ -246,6 +246,46 @@ table.hist-table .td-green{color:var(--green);}
 table.hist-table .td-red{color:var(--red);}
 
 /* ── HEALTH OVERVIEW ── */
+/* ── FOOD PREFERENCES TAB ── */
+.food-pref-section{margin-bottom:14px;}
+.food-pref-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.food-pref-title{font-size:11px;font-weight:700;color:var(--text-2);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px;}
+.food-pref-list{display:flex;flex-direction:column;gap:4px;min-height:0;max-height:220px;overflow-y:auto;}
+.food-pref-list::-webkit-scrollbar{width:4px;}
+.food-pref-list::-webkit-scrollbar-thumb{background:var(--text-3);border-radius:2px;}
+.pref-entry{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);transition:var(--t);}
+.pref-entry:hover{border-color:var(--border-hi);}
+.pref-entry .pe-name{flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pref-entry .pe-macros{font-size:10px;color:var(--text-3);white-space:nowrap;flex-shrink:0;}
+.pref-entry .pe-kcal{font-family:'DM Mono',monospace;font-size:13px;color:var(--yellow);white-space:nowrap;flex-shrink:0;}
+.pref-entry.hate .pe-kcal{color:var(--red);}
+.pref-entry.goto .pe-kcal{color:var(--cyan);}
+.pref-entry .pe-del{width:20px;height:20px;border-radius:50%;border:1px solid transparent;background:transparent;color:var(--text-3);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--t);flex-shrink:0;padding:0;}
+.pref-entry .pe-del:hover{background:var(--red-dim);color:var(--red);border-color:var(--red);}
+.pref-entry .pe-use{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;background:var(--cyan-dim);border:1px solid rgba(6,214,199,.3);color:var(--cyan);cursor:pointer;transition:var(--t);flex-shrink:0;}
+.pref-entry .pe-use:hover{background:rgba(6,214,199,.2);}
+.pref-empty{font-size:12px;color:var(--text-3);padding:8px 4px;text-align:center;}
+.pref-add-row{display:flex;gap:6px;margin-top:8px;}
+.pref-add-row input[type="text"]{flex:1;font-family:'Outfit',sans-serif;font-size:13px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);outline:none;}
+.pref-add-row input:focus{border-color:var(--cyan);}
+.pref-add-row input::placeholder{color:var(--text-3);}
+
+/* ── MEAL TIP REDESIGN ── */
+#meal-tip-panel{margin-bottom:12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.meal-tip-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px 0;}
+.meal-tip-type{font-size:10px;font-weight:700;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;}
+.meal-tip-actions{display:flex;gap:6px;}
+.meal-tip-btn{font-size:10px;font-weight:700;padding:4px 10px;border-radius:6px;border:1px solid var(--border-hi);background:var(--surface);color:var(--text-2);cursor:pointer;transition:var(--t);font-family:'Outfit',sans-serif;}
+.meal-tip-btn:hover{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-dim);}
+.meal-tip-btn.loading{opacity:.5;pointer-events:none;}
+.meal-tip-body{padding:10px 14px 12px;}
+.meal-tip-text{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;}
+.meal-tip-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.meal-tip-ctrl{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);}
+.meal-tip-ctrl input{width:70px;padding:5px 8px;font-family:'DM Mono',monospace;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);outline:none;text-align:center;}
+.meal-tip-ctrl input:focus{border-color:var(--cyan);}
+#meal-tip-loading{font-size:11px;color:var(--text-3);text-align:center;padding:12px;display:none;animation:pulse 1.5s infinite;}
+
 /* ── CUMULATIVE HEALTH TIP ── */
 .cumhealth-inner{font-size:12px;color:var(--text-2);line-height:1.6;padding:10px 12px;background:linear-gradient(135deg,rgba(34,197,94,0.06),rgba(6,214,199,0.04));border:1px solid rgba(34,197,94,0.2);border-left:3px solid var(--green);border-radius:0 var(--radius-sm) var(--radius-sm) 0;}
 .cumhealth-inner strong{color:var(--green);}
@@ -396,6 +436,7 @@ table.hist-table .td-red{color:var(--red);}
 
   <div id="tab-bar">
     <div class="tab-btn active" onclick="switchTab('today')">Today</div>
+    <div class="tab-btn" onclick="switchTab('food')">Food</div>
     <div class="tab-btn" onclick="switchTab('graphs')">Graphs</div>
     <div class="tab-btn" onclick="switchTab('history')">History</div>
   </div>
@@ -403,10 +444,30 @@ table.hist-table .td-red{color:var(--red);}
   <!-- TODAY -->
   <div class="tab-pane active" id="tab-today">
     <div id="date-display">——</div>
-    <div id="tip-loading">✦ AI is preparing your meal tip…</div>
-    <div id="home-tip-panel">
-      <div class="home-tip-meal" id="home-tip-meal"></div>
-      <div class="home-tip-text" id="home-tip-text"></div>
+    <!-- MEAL TIP PANEL -->
+    <div id="meal-tip-panel" style="display:none;">
+      <div class="meal-tip-header">
+        <span class="meal-tip-type" id="meal-tip-type">Meal Suggestion</span>
+        <div class="meal-tip-actions">
+          <button class="meal-tip-btn" id="btn-new-tip" onclick="fireHomeTip()">✦ New Tip</button>
+          <button class="meal-tip-btn" id="btn-gen-recipe" onclick="generateRecipe()">📋 Recipe</button>
+        </div>
+      </div>
+      <div class="meal-tip-body">
+        <div id="meal-tip-loading">✦ Generating…</div>
+        <div class="meal-tip-text" id="home-tip-text"></div>
+        <div class="meal-tip-controls">
+          <div class="meal-tip-ctrl">
+            <span>Max kcal</span>
+            <input type="number" id="tip-max-kcal" placeholder="600" min="100" max="2000" step="50">
+          </div>
+          <div class="meal-tip-ctrl">
+            <span>Min protein</span>
+            <input type="number" id="tip-min-protein" placeholder="30" min="0" max="200" step="5">
+            <span>g</span>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="warning-banner">⚠ Caloric intake exceeds your metabolic baseline</div>
     <div id="ai-status-bar">● AI working…</div>
@@ -623,6 +684,54 @@ table.hist-table .td-red{color:var(--red);}
     <button class="btn-next" onclick="nextDay()">End Day &amp; Start Tomorrow →</button>
   </div>
 
+  <!-- FOOD PREFERENCES -->
+  <div class="tab-pane" id="tab-food">
+
+    <!-- LOVES -->
+    <div class="food-pref-section panel">
+      <div class="food-pref-header">
+        <span class="food-pref-title">❤️ Foods You Love</span>
+      </div>
+      <div class="food-pref-list" id="list-love"></div>
+      <div class="pref-add-row">
+        <input type="text" id="add-love-input" placeholder="e.g. grilled chicken, Greek yogurt…" maxlength="80">
+        <button class="btn-ai" onclick="addPref('love')" style="padding:8px 12px;">AI Add</button>
+        <button class="btn-add" onclick="addPrefManual('love')">Add</button>
+      </div>
+    </div>
+
+    <!-- HATES -->
+    <div class="food-pref-section panel">
+      <div class="food-pref-header">
+        <span class="food-pref-title">🚫 Foods You Hate / Avoid</span>
+      </div>
+      <div class="food-pref-list" id="list-hate"></div>
+      <div class="pref-add-row">
+        <input type="text" id="add-hate-input" placeholder="e.g. liver, Brussels sprouts…" maxlength="80">
+        <button class="btn-ai" onclick="addPref('hate')" style="padding:8px 12px;">AI Add</button>
+        <button class="btn-add" onclick="addPrefManual('hate')">Add</button>
+      </div>
+    </div>
+
+    <!-- GO-TO MEALS -->
+    <div class="food-pref-section panel">
+      <div class="food-pref-header">
+        <span class="food-pref-title">⭐ Go-To Meals</span>
+      </div>
+      <div class="food-pref-list" id="list-goto"></div>
+      <div class="pref-add-row">
+        <input type="text" id="add-goto-input" placeholder="e.g. tuna salad, oat porridge with berries…" maxlength="80">
+        <button class="btn-ai" onclick="addPref('goto')" style="padding:8px 12px;">AI Add</button>
+        <button class="btn-add" onclick="addPrefManual('goto')">Add</button>
+      </div>
+    </div>
+
+    <p style="font-size:11px;color:var(--text-3);text-align:center;padding:4px 8px 16px;">
+      These preferences are used by AI when suggesting meals on the Today tab.
+    </p>
+
+  </div><!-- end tab-food -->
+
   <!-- GRAPHS -->
   <div class="tab-pane" id="tab-graphs">
 
@@ -762,7 +871,8 @@ let state = {
   days: [],
   currentDay: { date: todayStr(), weight:null, foods:[], exercises:[] },
   ai: { provider:'none', groqKey:'', geminiKey:'', mistralKey:'', claudeKey:'', geminiModel:'gemini-2.0-flash' },
-  skin: 'dark'
+  skin: 'dark',
+  food: { love: [], hate: [], goto: [] }
 };
 // Expose to Firebase module (ES modules can't access non-module globals otherwise)
 window.state = state;
@@ -782,6 +892,7 @@ function loadState() {
     if (s.tdee)    state.tdee = s.tdee;
     if (s.days)    state.days = s.days;
     if (s.ai)      state.ai   = Object.assign(state.ai, s.ai);
+    if (s.food)    state.food = Object.assign({love:[],hate:[],goto:[]}, s.food);
     if (s.skin)    state.skin = s.skin;
     if (s.currentDay) {
       if (s.currentDay.date === todayStr()) {
@@ -833,6 +944,7 @@ function init() {
   if (state.profile.lifestyle) document.getElementById('lifestyle').value = state.profile.lifestyle;
   if (state.profile.bodytype)  document.getElementById('bodytype').value  = state.profile.bodytype;
   if (state.profile.goalWeight) document.getElementById('goal-weight').value = state.profile.goalWeight;
+  renderFoodPrefs();
   setSex(state.profile.sex || 'M', false);
   updateDateDisplay();
   buildZoneBar();
@@ -1211,10 +1323,131 @@ async function aiEstimateExercise() {
 // ═══════════════════════════════════════════════
 // AI: HOME TIP (time-aware meal suggestion)
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// FOOD PREFERENCES
+// ═══════════════════════════════════════════════
+function getFoodPrefs() {
+  return state.food || { love:[], hate:[], goto:[] };
+}
+
+function prefContext() {
+  const f = getFoodPrefs();
+  const loves  = f.love.map(x=>x.name).join(', ');
+  const hates  = f.hate.map(x=>x.name).join(', ');
+  const gotos  = f.goto.map(x=>x.name).join(', ');
+  let ctx = '';
+  if (loves)  ctx += `\nFoods they love: ${loves}.`;
+  if (hates)  ctx += `\nFoods they HATE/avoid (never suggest these): ${hates}.`;
+  if (gotos)  ctx += `\nTheir go-to meals (prioritise these): ${gotos}.`;
+  return ctx;
+}
+
+function renderFoodPrefs() {
+  const f = getFoodPrefs();
+  renderPrefList('love', f.love, 'love');
+  renderPrefList('hate', f.hate, 'hate');
+  renderPrefList('goto', f.goto, 'goto');
+}
+
+function renderPrefList(type, items, cls) {
+  const el = document.getElementById('list-' + type);
+  if (!el) return;
+  if (!items.length) {
+    el.innerHTML = `<div class="pref-empty">Nothing added yet</div>`;
+    return;
+  }
+  el.innerHTML = items.map((item, i) => {
+    const macroStr = (item.protein||item.carbs||item.fat)
+      ? `${item.protein||0}p ${item.carbs||0}c ${item.fat||0}f`
+      : '';
+    const useBtn = type === 'goto'
+      ? `<button class="pe-use" onclick="useGoToMeal(${i})">Log it</button>`
+      : '';
+    return `<div class="pref-entry ${cls}">
+      <span class="pe-name">${escHtml(item.name)}</span>
+      ${macroStr ? `<span class="pe-macros">${macroStr}</span>` : ''}
+      ${item.kcal ? `<span class="pe-kcal">${item.kcal}</span>` : ''}
+      ${useBtn}
+      <button class="pe-del" onclick="deletePref('${type}',${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addPref(type) {
+  const inputId = 'add-' + type + '-input';
+  const name = document.getElementById(inputId).value.trim();
+  if (!name) { document.getElementById(inputId).focus(); return; }
+  if (state.ai.provider === 'none') { addPrefManual(type); return; }
+  showAIStatus('● AI looking up nutrition…');
+  try {
+    const prompt = `Nutrition database. Food/meal: "${name}". Give nutrition for a standard single serving. Reply ONLY with JSON: {"kcal":300,"protein":25,"carbs":30,"fat":8,"fiber":3}`;
+    const resp = await callAI(prompt);
+    const parsed = JSON.parse(resp.replace(/\`\`\`json|\`\`\`/g,'').trim());
+    state.food[type].push({ name, kcal:parsed.kcal||0, protein:parsed.protein||0, carbs:parsed.carbs||0, fat:parsed.fat||0, fiber:parsed.fiber||0, id:Date.now() });
+  } catch(e) {
+    state.food[type].push({ name, kcal:0, id:Date.now() });
+  }
+  document.getElementById(inputId).value = '';
+  hideAIStatus();
+  renderFoodPrefs();
+  saveState();
+}
+
+function addPrefManual(type) {
+  const inputId = 'add-' + type + '-input';
+  const name = document.getElementById(inputId).value.trim();
+  if (!name) return;
+  state.food[type].push({ name, kcal:0, id:Date.now() });
+  document.getElementById(inputId).value = '';
+  renderFoodPrefs();
+  saveState();
+}
+
+function deletePref(type, index) {
+  state.food[type].splice(index, 1);
+  renderFoodPrefs();
+  saveState();
+}
+
+function useGoToMeal(index) {
+  const meal = state.food.goto[index];
+  if (!meal) return;
+  document.getElementById('food-name').value  = meal.name;
+  document.getElementById('food-kcal').value  = meal.kcal  || '';
+  document.getElementById('food-protein').value = meal.protein || '';
+  document.getElementById('food-carbs').value   = meal.carbs   || '';
+  document.getElementById('food-fat').value     = meal.fat     || '';
+  document.getElementById('food-fiber').value   = meal.fiber   || '';
+  switchTab('today');
+  document.getElementById('food-kcal').focus();
+}
+
+// Keyboard shortcuts for pref inputs
+['love','hate','goto'].forEach(type => {
+  const el = document.getElementById('add-' + type + '-input');
+  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addPref(type); });
+});
+
+// ═══════════════════════════════════════════════
+// MEAL TIP + RECIPE
+// ═══════════════════════════════════════════════
+window.renderFoodPrefs = renderFoodPrefs;
+
 let _homeTipTimer = null;
 function debouncedHomeTip() {
   clearTimeout(_homeTipTimer);
   _homeTipTimer = setTimeout(fireHomeTip, 2000);
+}
+
+function mealTipSetLoading(on) {
+  const loadEl = document.getElementById('meal-tip-loading');
+  const textEl = document.getElementById('home-tip-text');
+  const btnNew = document.getElementById('btn-new-tip');
+  const btnRec = document.getElementById('btn-gen-recipe');
+  if (loadEl) loadEl.style.display = on ? 'block' : 'none';
+  if (textEl) textEl.style.opacity = on ? '0.3' : '1';
+  if (btnNew) btnNew.classList.toggle('loading', on);
+  if (btnRec) btnRec.classList.toggle('loading', on);
 }
 
 async function fireHomeTip() {
@@ -1223,20 +1456,55 @@ async function fireHomeTip() {
   const mealType = hour < 10 ? 'breakfast' : hour < 13 ? 'mid-morning snack' : hour < 16 ? 'lunch' : hour < 19 ? 'afternoon snack' : 'dinner';
   const tdee = state.tdee || state.bmr || 2000;
   const net  = calcNet();
-  const remaining = tdee - net;
+  const remaining = Math.max(0, tdee - net);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 600);
+  const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
   const w = state.profile.weight || 70;
-  const loadEl = document.getElementById('tip-loading');
-  loadEl.style.display = 'block';
-  document.getElementById('home-tip-panel').style.display = 'none';
+  const prefs = prefContext();
+
+  mealTipSetLoading(true);
+  document.getElementById('meal-tip-panel').style.display = 'block';
   try {
-    const prompt = `You are a concise diet coach. Person: ${w}kg, TDEE ${tdee} kcal, eaten ${net} kcal today, ${remaining} kcal remaining. Current time suggests ${mealType}. Suggest one specific ${mealType} idea that fits their remaining calories and is high in protein. Reply in 2 short sentences max. First sentence: the meal. Second sentence: why it fits. No emojis, no preamble.`;
+    const prompt = `You are a diet coach. Suggest one specific ${mealType} for this person.
+Stats: ${w}kg, ${remaining} kcal remaining today, TDEE ${tdee} kcal.
+Constraints: max ${maxKcal} kcal, at least ${minProt}g protein.${prefs}
+Reply in 2 sentences max. Sentence 1: the meal name and key ingredients. Sentence 2: kcal and protein estimate + why it fits. No emojis, no preamble.`;
     const resp = await callAI(prompt);
     if (!resp) return;
-    document.getElementById('home-tip-meal').textContent = mealType.toUpperCase();
+    document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
     document.getElementById('home-tip-text').textContent = resp.trim().replace(/^["']|["']$/g,'');
-    document.getElementById('home-tip-panel').style.display = 'block';
   } catch(e) { /* silent */ }
-  finally { loadEl.style.display = 'none'; }
+  finally { mealTipSetLoading(false); }
+}
+
+async function generateRecipe() {
+  if (state.ai.provider === 'none') { showAIResponse('Connect an AI in Settings first.'); return; }
+  const hour = new Date().getHours();
+  const mealType = hour < 10 ? 'breakfast' : hour < 13 ? 'snack' : hour < 16 ? 'lunch' : hour < 19 ? 'snack' : 'dinner';
+  const tdee = state.tdee || state.bmr || 2000;
+  const net  = calcNet();
+  const remaining = Math.max(0, tdee - net);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 600);
+  const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
+  const prefs = prefContext();
+
+  mealTipSetLoading(true);
+  document.getElementById('meal-tip-panel').style.display = 'block';
+  document.getElementById('meal-tip-type').textContent = 'RECIPE';
+  try {
+    const prompt = `You are a nutritionist chef. Write a quick recipe for a ${mealType}.
+Constraints: max ${maxKcal} kcal total, at least ${minProt}g protein.${prefs}
+Format:
+RECIPE NAME: [name]
+INGREDIENTS: [comma-separated list with quantities]
+METHOD: [2-3 steps max, very brief]
+NUTRITION: ~[kcal] kcal | [protein]g protein | [carbs]g carbs | [fat]g fat
+Keep it short and practical. No intro, no outro.`;
+    const resp = await callAI(prompt);
+    if (!resp) return;
+    document.getElementById('home-tip-text').textContent = resp.trim();
+  } catch(e) { /* silent */ }
+  finally { mealTipSetLoading(false); }
 }
 
 // ═══════════════════════════════════════════════
@@ -2777,6 +3045,7 @@ function applyCloudData(data) {
   if (data.days)       s.days       = data.days;
   if (data.skin)       s.skin       = data.skin;
   if (data.ai)         s.ai         = Object.assign(s.ai, data.ai);
+  if (data.food)       s.food       = Object.assign({love:[],hate:[],goto:[]}, data.food);
   if (data.currentDay) {
     const today = new Date().toISOString().slice(0,10);
     if (data.currentDay.date === today) s.currentDay = data.currentDay;
@@ -2793,6 +3062,7 @@ function applyCloudData(data) {
     const el = document.getElementById(id); if (el && s.profile[k]) el.value = s.profile[k];
   });
   if (s.skin) window.applyTheme && window.applyTheme(s.skin);
+  window.renderFoodPrefs && window.renderFoodPrefs();
 }
 
 // ── Cloud save — only writes if data actually changed ──
@@ -2816,6 +3086,7 @@ async function cloudSave(uid, force = false) {
       currentDay: s.currentDay || {},
       skin:       s.skin       || 'dark',
       ai:         s.ai         || {},
+      food:       s.food       || {love:[],hate:[],goto:[]},
       _savedAt:   Date.now()
     });
     lastSaveHash = hash;
