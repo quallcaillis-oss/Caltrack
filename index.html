@@ -907,7 +907,7 @@ table.hist-table .td-red{color:var(--red);}
             <button class="rc-log-btn" onclick="rcLogServing()" id="rc-log-btn" style="display:none;flex:1;">
               + Log to Today
             </button>
-            <button onclick="rcSaveToGoTo()" id="rc-save-btn" style="display:none;flex:1;padding:10px;border-radius:var(--radius-sm);background:var(--cyan-dim);border:1px solid rgba(6,214,199,.3);color:var(--cyan);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:var(--t);">
+            <button onclick="rcSaveToGoTo()" id="rc-save-btn" style="display:none;flex:1;padding:10px;border-radius:var(--radius-sm);background:var(--cyan-dim);border:1px solid rgba(6,214,199,.3);color:var(--cyan);font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:var(--t);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter=''">
               ⭐ Save to Go-To Meals
             </button>
           </div>
@@ -1837,6 +1837,39 @@ function logCurrentRecipe() {
 
 // Cached last recipe text to detect real "new" generation
 let _lastRecipeText = '';
+
+async function fireHomeTip(userTriggered = false) {
+  if (state.ai.provider === 'none') return;
+  const mealType = getMealTime();
+  const tdee = state.tdee || state.bmr || 2000;
+  const net  = calcNet();
+  const remaining = Math.max(0, tdee - net);
+  const maxKcal = parseInt(document.getElementById('tip-max-kcal')?.value) || Math.min(remaining, 650);
+  const minProt = parseInt(document.getElementById('tip-min-protein')?.value) || 25;
+  const w = state.profile.weight || 70;
+  const prefs = prefContext();
+  const seed = getRandomSeed();
+  const deficitTarget = Math.max(200, remaining - maxKcal);
+
+  mealTipSetLoading(true);
+  document.getElementById('meal-tip-panel').style.display = 'block';
+  document.getElementById('meal-tip-type').textContent = mealType.toUpperCase();
+  document.getElementById('home-tip-text').innerHTML = '';
+  try {
+    const prompt = `Diet coach. Suggest one ${seed} ${mealType} for this person.
+Person: ${w}kg, eaten ${net} kcal today, TDEE ${tdee} kcal, ${remaining} kcal remaining.
+CRITICAL: The meal must be max ${maxKcal} kcal so they stay in caloric deficit (at least ${deficitTarget} kcal under TDEE today).
+Must have at least ${minProt}g protein.${prefs}
+Reply with exactly 2 lines:
+Line 1: The meal name and its 3-4 key ingredients
+Line 2: Estimated kcal and protein, plus one sentence on why it fits their remaining budget
+No emojis, no preamble, no "Here is" intro.`;
+    const resp = await callAI(prompt);
+    if (!resp) return;
+    document.getElementById('home-tip-text').innerHTML = formatTip(resp, mealType, remaining, tdee);
+  } catch(e) { /* silent */ }
+  finally { mealTipSetLoading(false); }
+}
 
 async function generateRecipe(userTriggered = false) {
   if (state.ai.provider === 'none') { showAIResponse('Connect an AI in Settings first.'); return; }
@@ -3284,7 +3317,21 @@ Reply ONLY with valid JSON, no markdown:
     const resp = await callAI(prompt);
     if (!resp) throw new Error('No response from AI');
 
-    const data = JSON.parse(resp.replace(/```json|```/g, '').trim());
+    // Robust JSON extraction — handles markdown fences, truncation, control chars
+    let jsonStr = resp.replace(/```json|```/g, '').trim();
+    // Extract first complete JSON object
+    const jsonStart = jsonStr.indexOf('{');
+    const jsonEnd   = jsonStr.lastIndexOf('}');
+    if (jsonStart === -1 || jsonEnd === -1) throw new Error('AI did not return valid JSON. Please try again.');
+    jsonStr = jsonStr.slice(jsonStart, jsonEnd + 1);
+    // Remove control characters that break JSON.parse
+    jsonStr = jsonStr.replace(/[ -]/g, (c) => {
+      if (c === '\n') return '\\n';
+      if (c === '\t') return '\\t';
+      if (c === '\r') return '';
+      return '';
+    });
+    const data = JSON.parse(jsonStr);
     _rcParsedData = data;
 
     // Scale to my serving portion
