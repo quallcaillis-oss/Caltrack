@@ -1417,16 +1417,35 @@ async function aiEstimateFood() {
   btn.classList.add('loading'); btn.textContent='…';
   showAIStatus('● AI estimating nutrition…');
   try {
-    const prompt = `You are a precise nutrition database. The user logged: "${name}".
+    const prompt = `You are a precise nutrition database using USDA FoodData Central values.
+The user logged: "${name}".
 
-CRITICAL RULES — follow exactly:
-1. QUANTITY: If the input states a weight (400g, 200ml etc) or count (3 eggs, 2 slices), calculate for THAT EXACT TOTAL — not per 100g, not a default serving.
-2. SUGAR-FREE / DIET / ZERO / FREE / LIGHT: These words mean near-zero sugar. Drinks with these labels = 0–5 kcal per 100ml. Do NOT use full-sugar values.
-3. UNKNOWN BRANDS: If you don't know the exact product, use its closest category (e.g. "sugar-free carbonated drink") and standard category values.
-4. SANITY CHECK before answering: 400g blueberries ≈ 220 kcal. 330ml sugar-free drink ≈ 2 kcal. Large burger ≈ 600 kcal. Large pizza slice ≈ 300 kcal. If your number seems off, recalculate.
+CRITICAL RULES:
+1. QUANTITY: If input states a weight (e.g. "500g chicken") or count ("3 eggs"), calculate for THAT EXACT AMOUNT — never per 100g, never a default serving.
+2. SUGAR-FREE / DIET / ZERO / LIGHT / FREE: Near-zero calories. Drinks = 0–5 kcal per 100ml max.
+3. UNKNOWN BRAND: Use the closest food category with standard values.
+4. USE THESE EXACT USDA REFERENCE VALUES per 100g (memorise these):
+   - Raw apple: 52 kcal, 0.3g protein
+   - Blueberries: 57 kcal, 0.7g protein
+   - Banana: 89 kcal, 1.1g protein
+   - Grilled/roasted chicken breast: 165 kcal, 31g protein
+   - Boiled egg (whole): 155 kcal, 13g protein
+   - White rice (cooked): 130 kcal, 2.7g protein
+   - Oats (dry): 389 kcal, 17g protein
+   - Whole milk: 61 kcal per 100ml, 3.2g protein
+   - Olive oil: 884 kcal, 0g protein
+   - Cheddar cheese: 402 kcal, 25g protein
+   - Salmon (cooked): 208 kcal, 20g protein
+   - Broccoli (raw): 34 kcal, 2.8g protein
+   - So if user logs "500g grilled chicken breast" → 500 × 1.65 = 825 kcal, 155g protein
+   - So if user logs "150g blueberries" → 150 × 0.57 = 85 kcal, 1g protein
+   - So if user logs "1 medium apple (180g)" → 180 × 0.52 = 94 kcal → round to 95 kcal
 
-Use USDA or standard nutritional database values. Reply ONLY with valid JSON, no markdown, no extra text:
-{"kcal":220,"protein":3,"carbs":50,"fat":1,"fiber":6,"note":"400g frozen blueberries, USDA values"}`;
+5. DOUBLE-CHECK: Multiply per-100g value × actual grams ÷ 100. If your answer seems too high or too low vs the reference table above, recalculate.
+
+Reply ONLY with valid JSON, no markdown:
+{"kcal":85,"protein":1,"carbs":21,"fat":0,"fiber":2,"note":"150g blueberries, USDA 57 kcal/100g"}`;
+
     const resp = await callAI(prompt);
     if (!resp) throw new Error('Empty response');
     const parsed = JSON.parse(resp.replace(/```json|```/g,'').trim());
@@ -1518,7 +1537,9 @@ async function addPref(type) {
   if (state.ai.provider === 'none') { addPrefManual(type); return; }
   showAIStatus('● AI looking up nutrition…');
   try {
-    const prompt = `Nutrition database. Food/meal: "${name}". Give nutrition for a standard single serving. Reply ONLY with JSON: {"kcal":300,"protein":25,"carbs":30,"fat":8,"fiber":3}`;
+    const prompt = `USDA nutrition database. Food/meal: "${name}". Calculate nutrition for one standard serving using accurate USDA values.
+Reference: chicken breast 100g=165kcal/31g protein; egg=78kcal/6g protein; apple medium=95kcal/0.5g protein; banana=105kcal/1.3g protein; blueberries 100g=57kcal/0.7g protein; cooked rice 100g=130kcal/2.7g protein.
+Reply ONLY with JSON, no markdown: {"kcal":0,"protein":0,"carbs":0,"fat":0,"fiber":0}`;
     const resp = await callAI(prompt);
     const parsed = JSON.parse(resp.replace(/\`\`\`json|\`\`\`/g,'').trim());
     state.food[type].push({ name, kcal:parsed.kcal||0, protein:parsed.protein||0, carbs:parsed.carbs||0, fat:parsed.fat||0, fiber:parsed.fiber||0, id:Date.now() });
@@ -3148,13 +3169,22 @@ async function rcCalculate() {
 
   showAIStatus('● Calculating nutrition…');
   try {
-    const prompt = `You are a precise nutritionist. Calculate total nutrition for this ENTIRE recipe (all ingredients combined):
+    const prompt = `You are a precise nutritionist using USDA FoodData Central values. Calculate total nutrition for this ENTIRE recipe:
 ${ingList}
 
-Then I will divide by servings myself. Reply ONLY with JSON:
-{"total_kcal":0,"total_protein":0,"total_carbs":0,"total_fat":0,"total_fiber":0,"tip":"one sentence on how to increase protein or lower calories in this recipe"}
+KEY USDA REFERENCE VALUES per 100g — use these exactly:
+Chicken breast (grilled): 165 kcal, 31g protein | Egg (whole boiled): 155 kcal, 13g protein
+White rice (cooked): 130 kcal, 2.7g protein | Oats (dry): 389 kcal, 17g protein
+Blueberries: 57 kcal, 0.7g protein | Apple: 52 kcal, 0.3g protein | Banana: 89 kcal, 1.1g protein
+Olive oil: 884 kcal, 0g protein | Butter: 717 kcal, 0.9g protein
+Cheddar: 402 kcal, 25g protein | Whole milk (per 100ml): 61 kcal, 3.2g protein
+Broccoli: 34 kcal, 2.8g protein | Salmon (cooked): 208 kcal, 20g protein
 
-Use standard USDA nutritional values. Be accurate.`;
+Calculate: for each ingredient, multiply (quantity_in_grams_or_ml ÷ 100) × per-100g value. Sum all ingredients.
+
+Reply ONLY with JSON, no markdown:
+{"total_kcal":0,"total_protein":0,"total_carbs":0,"total_fat":0,"total_fiber":0,"tip":"one sentence to increase protein or lower calories"}`;
+
     const resp = await callAI(prompt);
     if (!resp) throw new Error('No response');
     const parsed = JSON.parse(resp.replace(/\`\`\`json|\`\`\`/g,'').trim());
