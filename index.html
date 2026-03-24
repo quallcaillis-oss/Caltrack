@@ -786,9 +786,9 @@ table.hist-table .td-red{color:var(--red);}
     <div class="panel">
       <div class="panel-label">Exercise Log</div>
       <ul id="exercise-list"></ul>
-      <div class="ex-counter-row" id="ex-counter-row" style="display:none;">
-        <div class="ex-counter"><span class="ex-counter-val" id="ex-pushup-count">0</span><span class="ex-counter-lbl">Push-ups</span></div>
-        <div class="ex-counter"><span class="ex-counter-val" id="ex-situp-count">0</span><span class="ex-counter-lbl">Sit-ups</span></div>
+      <div class="ex-counter-row" id="ex-counter-row">
+        <div class="ex-counter"><span class="ex-counter-val" id="ex-pushup-count">0</span><span class="ex-counter-lbl">Push-ups today</span></div>
+        <div class="ex-counter"><span class="ex-counter-val" id="ex-situp-count">0</span><span class="ex-counter-lbl">Sit-ups today</span></div>
       </div>
       <div class="add-row">
         <input type="text" id="ex-name" placeholder="What activity?" maxlength="80">
@@ -1989,19 +1989,24 @@ function updateMacros() {
       : `✓ Fiber target hit! (${Math.round(m.fiber||0)}g)`;
   }
 
-  // Exercise counters: count pushups and situps from today's log
+  // Exercise counters: always visible, extract pushup/situp counts
   const exs = state.currentDay.exercises || [];
   let pushups = 0, situps = 0;
   exs.forEach(e => {
     const n = e.name.toLowerCase();
-    const numMatch = n.match(/(\d+)/);
-    const num = numMatch ? parseInt(numMatch[1]) : 0;
-    if (n.includes('push') || n.includes('pushup')) pushups += num || 1;
-    if (n.includes('sit') || n.includes('situp') || n.includes('crunch')) situps += num || 1;
+    // Extract all numbers from string — handle "3x20", "3 sets of 20", "45 pushups"
+    const nums = [...n.matchAll(/(\d+)/g)].map(m => parseInt(m[1]));
+    // Total reps: if multiple numbers, take the largest (most likely total) or multiply sets×reps
+    let reps = 0;
+    if (nums.length === 1) reps = nums[0];
+    else if (nums.length >= 2) reps = nums[0] * nums[1]; // e.g. "3x20" → 60
+    if (!reps) reps = 1; // fallback: at least 1
+    if (n.includes('push')) pushups += reps;
+    if (n.includes('sit') || n.includes('crunch') || n.includes('ab')) situps += reps;
   });
   const row = document.getElementById('ex-counter-row');
   if (row) {
-    row.style.display = (pushups > 0 || situps > 0) ? 'flex' : 'none';
+    row.style.display = 'flex'; // always show
     document.getElementById('ex-pushup-count').textContent = pushups;
     document.getElementById('ex-situp-count').textContent  = situps;
   }
