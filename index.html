@@ -149,6 +149,18 @@ select:focus{border-color:var(--cyan);}
 .protein-tip:not(:empty){padding:7px 10px;background:var(--cyan-dim);border-left:2px solid var(--cyan);border-radius:0 6px 6px 0;margin-bottom:4px;}
 .protein-tip.warn{color:var(--yellow);background:var(--yellow-dim);border-left-color:var(--yellow);}
 .protein-tip.good{color:var(--green);background:var(--green-dim);border-left-color:var(--green);}
+.fiber-bar-wrap{margin-top:4px;margin-bottom:4px;}
+.fiber-bar-track{height:4px;background:var(--surface);border-radius:99px;overflow:hidden;}
+.fiber-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#a3e635,#65a30d);width:0%;transition:width .5s ease;}
+.fiber-bar-label{font-size:9px;color:var(--text-2);font-family:'DM Mono',monospace;margin-top:2px;}
+.kcal-btn-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;}
+.kcal-preset-btn{flex:1;min-width:0;padding:6px 2px;font-size:11px;font-weight:700;border:1px solid var(--border-hi);border-radius:6px;background:var(--surface);color:var(--text-2);cursor:pointer;transition:var(--t);font-family:'Outfit',sans-serif;white-space:nowrap;}
+.kcal-preset-btn:hover{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);}
+.kcal-preset-btn.active{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan);}
+.ex-counter-row{display:flex;gap:8px;margin-top:6px;padding:6px 8px;background:var(--surface);border-radius:var(--radius-sm);border:1px solid var(--border);}
+.ex-counter{flex:1;text-align:center;}
+.ex-counter-val{font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:var(--cyan);display:block;}
+.ex-counter-lbl{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:1px;}
 
 /* DAILY ADVICE */
 #daily-advice-panel{margin-bottom:10px;display:none;}
@@ -551,19 +563,20 @@ table.hist-table .td-red{color:var(--red);}
         </div>
       </div>
       <div class="meal-tip-body" id="meal-tip-body">
+        <!-- Calorie preset buttons — click to generate a recipe at that budget -->
+        <div class="kcal-btn-row">
+          <button class="kcal-preset-btn" onclick="generateRecipeAtKcal(250)">250</button>
+          <button class="kcal-preset-btn" onclick="generateRecipeAtKcal(400)">400</button>
+          <button class="kcal-preset-btn" onclick="generateRecipeAtKcal(600)">600</button>
+          <button class="kcal-preset-btn" onclick="generateRecipeAtKcal(800)">800</button>
+          <button class="kcal-preset-btn" onclick="generateRecipeAtKcal(1000)">1000</button>
+          <span style="font-size:9px;color:var(--text-3);align-self:center;white-space:nowrap;">kcal</span>
+        </div>
         <div id="meal-tip-loading">✦ Generating…</div>
         <div id="home-tip-text"></div>
-        <div class="meal-tip-controls">
-          <div class="meal-tip-ctrl">
-            <span>Max kcal</span>
-            <input type="number" id="tip-max-kcal" placeholder="auto" min="100" max="2000" step="50">
-          </div>
-          <div class="meal-tip-ctrl">
-            <span>Min protein</span>
-            <input type="number" id="tip-min-protein" placeholder="auto" min="0" max="200" step="5">
-            <span>g</span>
-          </div>
-        </div>
+        <!-- Keep hidden inputs for tip generation compatibility -->
+        <input type="hidden" id="tip-max-kcal" value="">
+        <input type="hidden" id="tip-min-protein" value="">
       </div>
     </div>
     <div id="warning-banner">⚠ Caloric intake exceeds your metabolic baseline</div>
@@ -743,6 +756,10 @@ table.hist-table .td-red{color:var(--red);}
           <div class="protein-bar-label" id="protein-bar-label"></div>
         </div>
         <div id="protein-tip" class="protein-tip"></div>
+        <div class="fiber-bar-wrap">
+          <div class="fiber-bar-track"><div class="fiber-bar-fill" id="fiber-bar-fill"></div></div>
+          <div class="fiber-bar-label" id="fiber-bar-label"></div>
+        </div>
       </div>
 
       <!-- DAILY ADVICE -->
@@ -769,6 +786,10 @@ table.hist-table .td-red{color:var(--red);}
     <div class="panel">
       <div class="panel-label">Exercise Log</div>
       <ul id="exercise-list"></ul>
+      <div class="ex-counter-row" id="ex-counter-row" style="display:none;">
+        <div class="ex-counter"><span class="ex-counter-val" id="ex-pushup-count">0</span><span class="ex-counter-lbl">Push-ups</span></div>
+        <div class="ex-counter"><span class="ex-counter-val" id="ex-situp-count">0</span><span class="ex-counter-lbl">Sit-ups</span></div>
+      </div>
       <div class="add-row">
         <input type="text" id="ex-name" placeholder="What activity?" maxlength="80">
         <input type="number" id="ex-kcal" placeholder="kcal" min="0" max="9999" step="1">
@@ -1799,6 +1820,19 @@ No emojis, no preamble, no "Here is" intro.`;
   finally { mealTipSetLoading(false); }
 }
 
+// Called by kcal preset buttons — generates a recipe at a specific calorie target
+async function generateRecipeAtKcal(targetKcal) {
+  // Highlight the pressed button
+  document.querySelectorAll('.kcal-preset-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  // Set hidden input so generateRecipe picks it up
+  document.getElementById('tip-max-kcal').value = targetKcal;
+  document.getElementById('tip-min-protein').value = '';
+  await generateRecipe(true);
+  // Remove active state after generation
+  setTimeout(() => event.target.classList.remove('active'), 3000);
+}
+
 async function generateRecipe(userTriggered = false) {
   if (state.ai.provider === 'none') { showAIResponse('Connect an AI in Settings first.'); return; }
   const mealType = getMealTime();
@@ -1848,8 +1882,14 @@ async function fireDailyAdvice() {
     const pRem = pTgt ? Math.max(0, pTgt - Math.round(m.protein)) : null;
     const kRem = Math.max(0, tdee - net);
     try {
-      const prompt = `Diet coach. Today so far: ${net} kcal eaten, ${Math.round(m.protein)}g protein, ${Math.round(m.carbs)}g carbs, ${Math.round(m.fat)}g fat, ${Math.round(m.fiber)}g fiber. TDEE: ${tdee} kcal. Protein target: ${pTgt||'unknown'}g. Remaining: ${kRem} kcal, ${pRem!==null?pRem+'g protein needed':''}.
-Give exactly 2 short bullet points (use • symbol): 1) how much protein still needed and what food to eat to hit it without going over calories, 2) one practical tip for the rest of the day. Max 15 words per bullet. No intro text.`;
+      const ftgt = typeof fiberTarget === 'function' ? fiberTarget() : 25;
+    const fRem = Math.max(0, ftgt - Math.round(m.fiber||0));
+    const prompt = `Nutrition coach. Today so far: ${net} kcal eaten, TDEE ${tdee} kcal, ${kRem} kcal remaining.
+Macros: ${Math.round(m.protein)}g protein (target ${pTgt||'?'}g, ${pRem!==null?pRem+'g to go':'on track'}), ${Math.round(m.carbs)}g carbs, ${Math.round(m.fat)}g fat, ${Math.round(m.fiber||0)}g fiber (target ${ftgt}g, ${fRem}g to go).
+Give exactly 2 short bullet points (use • symbol):
+1) Protein + fiber gap — what one food covers both (be specific, e.g. "100g lentils adds 9g protein and 8g fiber")
+2) One insight about today's balance — fat/carb ratio, micronutrient gap, or meal timing
+Max 15 words per bullet. No intro text.`;
       const resp = await callAI(prompt);
       if (!resp) return;
       const panel = document.getElementById('daily-advice-panel');
@@ -1905,24 +1945,65 @@ function proteinTarget() {
   const multiplier = bodyTypeProteinMultiplier(bt, sex);
   return w ? Math.round(w * multiplier) : null;
 }
+function fiberTarget() {
+  // WHO/EFSA recommendation: 25-38g/day based on age/sex/weight
+  const { age, sex, weight } = state.profile;
+  if (!age) return 25; // default
+  // Women need slightly less, older adults slightly more
+  let base = sex === 'F' ? 25 : 30;
+  if (age > 50) base += 3;
+  if (weight && weight > 90) base += 2; // larger body needs more
+  return base;
+}
+
 function updateMacros() {
-  const m = calcMacros(), tgt = proteinTarget();
+  const m = calcMacros(), tgt = proteinTarget(), ftgt = fiberTarget();
   const fmt = v => v > 0 ? Math.round(v)+'g' : '—';
   document.getElementById('m-protein').textContent = fmt(m.protein);
   document.getElementById('m-carbs').textContent   = fmt(m.carbs);
   document.getElementById('m-fat').textContent     = fmt(m.fat);
   document.getElementById('m-fiber').textContent   = fmt(m.fiber);
   document.getElementById('m-protein-target').textContent = tgt ? tgt+'g' : '—';
+
+  // Protein bar
   const fill  = document.getElementById('protein-bar-fill');
   const label = document.getElementById('protein-bar-label');
   if (tgt) {
     fill.style.width = Math.min(m.protein/tgt*100,100) + '%';
     fill.classList.toggle('over', m.protein >= tgt);
     const rem = tgt - Math.round(m.protein);
-    label.textContent = rem > 0 ? `${Math.round(m.protein)}g / ${tgt}g  (${rem}g to go)` : `✓ Protein target hit!`;
+    label.textContent = rem > 0 ? `${Math.round(m.protein)}g / ${tgt}g protein  (${rem}g to go)` : `✓ Protein target hit!`;
   } else {
     fill.style.width='0%';
     label.textContent = 'Set weight in profile to get protein target';
+  }
+
+  // Fiber bar
+  const fFill  = document.getElementById('fiber-bar-fill');
+  const fLabel = document.getElementById('fiber-bar-label');
+  if (fFill) {
+    fFill.style.width = Math.min((m.fiber||0)/ftgt*100, 100) + '%';
+    const frem = ftgt - Math.round(m.fiber||0);
+    fLabel.textContent = frem > 0
+      ? `${Math.round(m.fiber||0)}g / ${ftgt}g fiber  (${frem}g to go — target for your profile)`
+      : `✓ Fiber target hit! (${Math.round(m.fiber||0)}g)`;
+  }
+
+  // Exercise counters: count pushups and situps from today's log
+  const exs = state.currentDay.exercises || [];
+  let pushups = 0, situps = 0;
+  exs.forEach(e => {
+    const n = e.name.toLowerCase();
+    const numMatch = n.match(/(\d+)/);
+    const num = numMatch ? parseInt(numMatch[1]) : 0;
+    if (n.includes('push') || n.includes('pushup')) pushups += num || 1;
+    if (n.includes('sit') || n.includes('situp') || n.includes('crunch')) situps += num || 1;
+  });
+  const row = document.getElementById('ex-counter-row');
+  if (row) {
+    row.style.display = (pushups > 0 || situps > 0) ? 'flex' : 'none';
+    document.getElementById('ex-pushup-count').textContent = pushups;
+    document.getElementById('ex-situp-count').textContent  = situps;
   }
 }
 let _ptTimer = null;
@@ -3044,6 +3125,110 @@ const THEMES = {
       'body-bg': 'radial-gradient(ellipse 60% 40% at 50% 100%,rgba(255,68,0,0.1) 0%,transparent 60%)'
     }
   }
+  ,
+  asterix: {
+    name: 'Caloritrackatrorix',
+    desc: 'Gaulish magic potion energy',
+    swatches: ['#1a2e0a','#2e5010','#f5c518','#e84010','#4a90d0'],
+    vars: {
+      '--bg':'#141e06','--surface':'#1c2c0a','--card':'#243810','--card-hi':'#2e4814',
+      '--border':'rgba(245,197,24,0.2)','--border-hi':'rgba(245,197,24,0.45)',
+      '--cyan':'#f5c518','--cyan-dim':'rgba(245,197,24,0.12)','--cyan-glow':'rgba(245,197,24,0.3)',
+      '--green':'#5aaa1a','--green-dim':'rgba(90,170,26,0.15)',
+      '--yellow':'#f5c518','--yellow-dim':'rgba(245,197,24,0.15)',
+      '--violet':'#4a90d0','--violet-dim':'rgba(74,144,208,0.15)',
+      '--red':'#e84010','--red-dim':'rgba(232,64,16,0.18)',
+      '--text':'#f0e8c0','--text-2':'#8a9a50','--text-3':'#3a4a18',
+      '--radius':'8px','--radius-sm':'4px',
+      'body-bg': 'radial-gradient(ellipse 70% 40% at 50% -5%,rgba(245,197,24,0.1) 0%,transparent 60%)'
+    }
+  },
+  hellboy: {
+    name: 'Hellish Boy',
+    desc: 'Hell red, brimstone & shadow',
+    swatches: ['#0a0000','#1e0400','#cc1800','#ff6b00','#d4a010'],
+    vars: {
+      '--bg':'#080000','--surface':'#120200','--card':'#1c0400','--card-hi':'#260600',
+      '--border':'rgba(204,24,0,0.2)','--border-hi':'rgba(255,107,0,0.4)',
+      '--cyan':'#ff6b00','--cyan-dim':'rgba(255,107,0,0.1)','--cyan-glow':'rgba(255,107,0,0.3)',
+      '--green':'#608040','--green-dim':'rgba(96,128,64,0.12)',
+      '--yellow':'#d4a010','--yellow-dim':'rgba(212,160,16,0.15)',
+      '--violet':'#8040c0','--violet-dim':'rgba(128,64,192,0.15)',
+      '--red':'#cc1800','--red-dim':'rgba(204,24,0,0.2)',
+      '--text':'#e8c8a0','--text-2':'#804828','--text-3':'#3a1808',
+      '--radius':'4px','--radius-sm':'2px',
+      'body-bg': 'radial-gradient(ellipse 60% 40% at 50% 100%,rgba(204,24,0,0.12) 0%,transparent 60%)'
+    }
+  },
+  marsupilami: {
+    name: 'Mars UP',
+    desc: 'Jungle yellow, black spots',
+    swatches: ['#f5e800','#d4c400','#1a1a00','#2a8a00','#e86000'],
+    vars: {
+      '--bg':'#f2e400','--surface':'#f8ee00','--card':'#fef600','--card-hi':'#fffc20',
+      '--border':'rgba(0,0,0,0.15)','--border-hi':'rgba(0,0,0,0.35)',
+      '--cyan':'#1a1a00','--cyan-dim':'rgba(0,0,0,0.08)','--cyan-glow':'rgba(0,0,0,0.15)',
+      '--green':'#2a8a00','--green-dim':'rgba(42,138,0,0.15)',
+      '--yellow':'#e86000','--yellow-dim':'rgba(232,96,0,0.15)',
+      '--violet':'#8a0080','--violet-dim':'rgba(138,0,128,0.12)',
+      '--red':'#cc0000','--red-dim':'rgba(204,0,0,0.12)',
+      '--text':'#0a0a00','--text-2':'#4a4a00','--text-3':'#8a8a40',
+      '--radius':'14px','--radius-sm':'8px',
+      'body-bg': 'none'
+    }
+  },
+  gaston: {
+    name: 'La Gaffe',
+    desc: 'Office chaos, blue ink & cats',
+    swatches: ['#f0f4e8','#e0e8d0','#1a4a90','#e8a000','#cc2800'],
+    vars: {
+      '--bg':'#ecf0e4','--surface':'#f4f8ec','--card':'#fafcf4','--card-hi':'#ffffff',
+      '--border':'rgba(26,74,144,0.15)','--border-hi':'rgba(26,74,144,0.35)',
+      '--cyan':'#1a4a90','--cyan-dim':'rgba(26,74,144,0.1)','--cyan-glow':'rgba(26,74,144,0.2)',
+      '--green':'#3a7a30','--green-dim':'rgba(58,122,48,0.12)',
+      '--yellow':'#e8a000','--yellow-dim':'rgba(232,160,0,0.15)',
+      '--violet':'#903a70','--violet-dim':'rgba(144,58,112,0.12)',
+      '--red':'#cc2800','--red-dim':'rgba(204,40,0,0.12)',
+      '--text':'#1a1e10','--text-2':'#4a5a30','--text-3':'#8a9a70',
+      '--radius':'6px','--radius-sm':'3px',
+      'body-bg': 'none'
+    }
+  },
+  lucky: {
+    name: 'Lucky',
+    desc: 'Dusty prairie, sunset & denim',
+    swatches: ['#f0e8c8','#e0d0a0','#1a4878','#c88000','#8a2010'],
+    vars: {
+      '--bg':'#ece4c0','--surface':'#f4ecd0','--card':'#faf4e0','--card-hi':'#fff8ec',
+      '--border':'rgba(26,72,120,0.18)','--border-hi':'rgba(200,128,0,0.4)',
+      '--cyan':'#1a4878','--cyan-dim':'rgba(26,72,120,0.1)','--cyan-glow':'rgba(26,72,120,0.2)',
+      '--green':'#3a6828','--green-dim':'rgba(58,104,40,0.12)',
+      '--yellow':'#c88000','--yellow-dim':'rgba(200,128,0,0.15)',
+      '--violet':'#784858','--violet-dim':'rgba(120,72,88,0.12)',
+      '--red':'#8a2010','--red-dim':'rgba(138,32,16,0.15)',
+      '--text':'#1e1408','--text-2':'#6a5030','--text-3':'#b09070',
+      '--radius':'4px','--radius-sm':'2px',
+      'body-bg': 'radial-gradient(ellipse 100% 30% at 50% 100%,rgba(200,128,0,0.08) 0%,transparent 60%)'
+    }
+  },
+  corto: {
+    name: 'Corto',
+    desc: 'Mediterranean ink, salt & bronze',
+    swatches: ['#0e1820','#162838','#1a6888','#c8a860','#e8e0d0'],
+    vars: {
+      '--bg':'#0a1418','--surface':'#101e28','--card':'#162838','--card-hi':'#1c3048',
+      '--border':'rgba(26,104,136,0.2)','--border-hi':'rgba(200,168,96,0.38)',
+      '--cyan':'#c8a860','--cyan-dim':'rgba(200,168,96,0.1)','--cyan-glow':'rgba(200,168,96,0.25)',
+      '--green':'#3a7858','--green-dim':'rgba(58,120,88,0.12)',
+      '--yellow':'#c8a860','--yellow-dim':'rgba(200,168,96,0.15)',
+      '--violet':'#1a6888','--violet-dim':'rgba(26,104,136,0.15)',
+      '--red':'#a03020','--red-dim':'rgba(160,48,32,0.15)',
+      '--text':'#e8e0d0','--text-2':'#708898','--text-3':'#304050',
+      '--radius':'6px','--radius-sm':'3px',
+      'body-bg': 'radial-gradient(ellipse 80% 50% at 50% -10%,rgba(26,104,136,0.12) 0%,transparent 65%)'
+    }
+  }
+
 };
 
 let currentSkin = 'dark';
@@ -3075,7 +3260,8 @@ function buildSkinGrid() {
   const GROUPS = {
     default:   { label: 'Default',    keys: ['dark','light'] },
     misc:      { label: 'Misc',       keys: ['apple','arctic','bauhaus','cherry','neon','nordic','oceanside','pastel','pastoral','sunset'].filter(k=>THEMES[k]) },
-    cinematic: { label: 'Cinematic',  keys: ['amelie','deathstar','eastwood','forman','godfather','jeunet','kurosawa','odyssey','onering','spielberg','tarkovsky','tarantino','tatooine','wes'].filter(k=>THEMES[k]) }
+    cinematic: { label: 'Cinematic',  keys: ['amelie','deathstar','eastwood','forman','godfather','jeunet','kurosawa','odyssey','onering','spielberg','tarkovsky','tarantino','tatooine','wes'].filter(k=>THEMES[k]) },
+    comic:     { label: 'Comic',      keys: ['asterix','corto','gaston','hellboy','lucky','marsupilami'].filter(k=>THEMES[k]) }
   };
 
   // Restore collapse states
