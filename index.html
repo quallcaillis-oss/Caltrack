@@ -1275,7 +1275,7 @@ function addExercise() {
   state.currentDay.exercises.push({ name, kcal, id: Date.now() });
   document.getElementById('ex-name').value = document.getElementById('ex-kcal').value = '';
   document.getElementById('ex-name').focus();
-  renderLists(); updateDisplay(); saveState();
+  renderLists(); updateDisplay(); updateMacros(); saveState();
   if (state.ai.provider !== 'none') { fireDailyAdvice(); debouncedHomeTip(); }
 }
 function delFood(id) {
@@ -1285,7 +1285,7 @@ function delFood(id) {
 }
 function delExercise(id) {
   state.currentDay.exercises = state.currentDay.exercises.filter(e => e.id !== id);
-  renderLists(); updateDisplay(); saveState();
+  renderLists(); updateDisplay(); updateMacros(); saveState();
   if (state.ai.provider !== 'none') { fireDailyAdvice(); debouncedHomeTip(); }
 }
 function renderLists() {
