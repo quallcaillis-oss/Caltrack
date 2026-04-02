@@ -953,6 +953,32 @@ table.hist-table .td-red{color:var(--red);}
       <div class="graph-title">Cumulative deficit over time (kcal)</div>
       <div class="graph-canvas-wrap"><canvas id="graph-cumdeficit" class="graph" height="120"></canvas></div>
     </div>
+    <div class="graph-block">
+      <div class="graph-title">Daily calories burned (exercise)</div>
+      <div class="graph-canvas-wrap"><canvas id="graph-burned" class="graph" height="120"></canvas></div>
+    </div>
+    <div class="graph-block">
+      <div class="graph-title">Push-ups &amp; Sit-ups per day</div>
+      <div class="graph-canvas-wrap"><canvas id="graph-reps" class="graph" height="130"></canvas></div>
+      <div class="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Push-ups</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--violet)"></div>Sit-ups</div>
+      </div>
+    </div>
+    <!-- WEIGHT FORECAST — WEEKLY RATE -->
+    <div class="graph-block" id="forecast-weekly-panel" style="display:none;">
+      <div class="score-section-label">Weight Forecast — 6 Months (at 7-day deficit rate)</div>
+      <div id="forecast-weekly-cards" class="stats-grid" style="margin-bottom:10px;"></div>
+      <div class="graph-canvas-wrap"><canvas id="graph-forecast-weekly" class="graph" height="150"></canvas></div>
+    </div>
+
+    <!-- WEIGHT FORECAST — MONTHLY RATE -->
+    <div class="graph-block" id="forecast-monthly-panel" style="display:none;">
+      <div class="score-section-label">Weight Forecast — 6 Months (at 30-day deficit rate)</div>
+      <div id="forecast-monthly-cards" class="stats-grid" style="margin-bottom:10px;"></div>
+      <div class="graph-canvas-wrap"><canvas id="graph-forecast-monthly" class="graph" height="150"></canvas></div>
+    </div>
+
     <div id="graphs-no-data" class="no-data" style="display:none;">
       Log at least one full day to see graphs.<br>
       <span style="font-size:11px;color:var(--text-3)">Use "End Day" to save today's data</span>
@@ -964,7 +990,7 @@ table.hist-table .td-red{color:var(--red);}
     <div class="panel-label" style="margin-bottom:10px;">Day-by-Day Log</div>
     <div id="history-table-wrap">
       <table class="hist-table">
-        <thead><tr><th>Date</th><th>Weight</th><th>Intake</th><th>Burned</th><th>Net</th><th>Deficit</th></tr></thead>
+        <thead><tr><th>Date</th><th>Weight</th><th>Intake</th><th>Burned</th><th>Net</th><th>Deficit</th><th>💪</th><th>🏋</th></tr></thead>
         <tbody id="hist-tbody"></tbody>
       </table>
     </div>
@@ -1137,12 +1163,13 @@ function calcBMRFormula(w, h, a, sex) {
   return Math.round(sex === 'M' ? 10*w + 6.25*h - 5*a + 5 : 10*w + 6.25*h - 5*a - 161);
 }
 function calcTDEE(bmr, lifestyle, bodytype) {
-  // Body type modifier on top of activity multiplier:
-  // Ectomorphs: naturally higher metabolic rate (~+8%) — more lean mass per kg
-  // Endomorphs: naturally lower metabolic rate (~-8%) — higher fat-to-muscle ratio
-  // Mesomorphs: no adjustment — formula is calibrated for average composition
-  const btMod = bodytype === 'ecto' ? 1.08 : bodytype === 'endo' ? 0.92 : 1.0;
-  return Math.round(bmr * parseFloat(lifestyle || 1.2) * btMod);
+  // Body type adjusts BASE metabolic rate (not stacked on top of activity):
+  // Ectomorphs: ~+5% BMR — naturally leaner, slightly higher resting metabolism
+  // Endomorphs: ~-5% BMR — naturally more body fat, slightly lower resting metabolism
+  // Mesomorphs: no adjustment — Mifflin-St Jeor calibrated for average composition
+  // Activity multiplier then scales the adjusted BMR
+  const btMod = bodytype === 'ecto' ? 1.05 : bodytype === 'endo' ? 0.95 : 1.0;
+  return Math.round(bmr * btMod * parseFloat(lifestyle || 1.2));
 }
 function recalcBMR() {
   const w  = parseFloat(document.getElementById('weight').value);
@@ -1361,11 +1388,21 @@ function flashStatus(msg) {
 function nextDay() {
   if (!confirm('End today and start a new day?\nToday\'s log will be saved to history.')) return;
   const intake=calcIntake(), burned=calcBurned(), net=calcNet();
+  // Count pushups and situps for history
+  let _dayPushups = 0, _daySitups = 0;
+  (state.currentDay.exercises||[]).forEach(e => {
+    const n = e.name.toLowerCase();
+    const nums = [...n.matchAll(/(\d+)/g)].map(m => parseInt(m[1]));
+    let reps = nums.length === 1 ? nums[0] : nums.length >= 2 ? nums[0]*nums[1] : 1;
+    if (n.includes('push')) _dayPushups += reps;
+    if (n.includes('sit') || n.includes('crunch') || n.includes('ab')) _daySitups += reps;
+  });
   state.days.push({
     date:state.currentDay.date, weight:state.currentDay.weight||state.profile.weight,
     foods:[...state.currentDay.foods], exercises:[...state.currentDay.exercises],
     intake, burned, net, bmr:state.bmr, tdee:state.tdee,
-    deficit:(state.tdee||state.bmr||0)-net
+    deficit:(state.tdee||state.bmr||0)-net,
+    pushups: _dayPushups, situps: _daySitups
   });
   const d = new Date(state.currentDay.date+'T12:00:00');
   d.setDate(d.getDate()+1);
@@ -1436,46 +1473,66 @@ async function aiEstimateFood() {
   if (state.ai.provider === 'none') { showAIResponse('No AI configured. Open ⚙ Settings to add an API key.'); return; }
   const btn = document.getElementById('btn-food-ai');
   btn.classList.add('loading'); btn.textContent='…';
-  showAIStatus('● AI estimating nutrition…');
+  showAIStatus('● Looking up in USDA database…');
+
+  // ── Step 1: Query USDA FoodData Central (free, no key needed with DEMO_KEY) ──
+  let usdaContext = '';
   try {
-    const prompt = `You are a precise nutrition database using USDA FoodData Central values.
-The user logged: "${name}".
+    // Strip quantities to get the food name for search (e.g. "300g chicken breast" → "chicken breast")
+    const searchQuery = name.replace(/^\d+[\d.,]*\s*(g|ml|kg|l|cup|tbsp|tsp|oz|lb|piece|slice|clove|handful|x|×)?\s*/i, '').trim() || name;
+    const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(searchQuery)}&dataType=SR%20Legacy,Foundation&pageSize=3&api_key=DEMO_KEY`;
+    const usdaResp = await fetch(usdaUrl, { signal: AbortSignal.timeout(4000) });
+    if (usdaResp.ok) {
+      const usdaData = await usdaResp.json();
+      const foods = usdaData.foods || [];
+      if (foods.length) {
+        // Extract top 2 results with their key nutrients
+        usdaContext = '\n\nREAL USDA FOODDATA CENTRAL DATA (use these exact values, do not invent):\n';
+        foods.slice(0, 2).forEach((food, i) => {
+          const getNutrient = (id) => {
+            const n = food.foodNutrients?.find(n => n.nutrientId === id);
+            return n ? Math.round(n.value * 10) / 10 : 0;
+          };
+          const kcal    = getNutrient(1008); // Energy
+          const protein = getNutrient(1003); // Protein
+          const carbs   = getNutrient(1005); // Carbs
+          const fat     = getNutrient(1004); // Total fat
+          const fiber   = getNutrient(1079); // Fiber
+          usdaContext += `Option ${i+1}: "${food.description}" — per 100g: ${kcal} kcal, ${protein}g protein, ${carbs}g carbs, ${fat}g fat, ${fiber}g fiber (USDA FDC ID: ${food.fdcId})\n`;
+        });
+        usdaContext += 'Use the most relevant option above. These are authoritative USDA values — do not override them.';
+        showAIStatus('● USDA data found — calculating portion…');
+      }
+    }
+  } catch(e) {
+    // USDA lookup failed (offline, rate limited etc) — fall back to AI knowledge only
+    usdaContext = '';
+  }
 
-CRITICAL RULES:
-1. QUANTITY: If input states a weight (e.g. "500g chicken") or count ("3 eggs"), calculate for THAT EXACT AMOUNT — never per 100g, never a default serving.
-2. SUGAR-FREE / DIET / ZERO / LIGHT / FREE: Near-zero calories. Drinks = 0–5 kcal per 100ml max.
-3. UNKNOWN BRAND: Use the closest food category with standard values.
-4. USE THESE EXACT USDA REFERENCE VALUES per 100g (memorise these):
-   - Raw apple: 52 kcal, 0.3g protein
-   - Blueberries: 57 kcal, 0.7g protein
-   - Banana: 89 kcal, 1.1g protein
-   - Grilled/roasted chicken breast: 165 kcal, 31g protein
-   - Boiled egg (whole): 155 kcal, 13g protein
-   - White rice (cooked): 130 kcal, 2.7g protein
-   - Oats (dry): 389 kcal, 17g protein
-   - Whole milk: 61 kcal per 100ml, 3.2g protein
-   - Olive oil: 884 kcal, 0g protein
-   - Cheddar cheese: 402 kcal, 25g protein
-   - Salmon (cooked): 208 kcal, 20g protein
-   - Broccoli (raw): 34 kcal, 2.8g protein
-   - So if user logs "500g grilled chicken breast" → 500 × 1.65 = 825 kcal, 155g protein
-   - So if user logs "150g blueberries" → 150 × 0.57 = 85 kcal, 1g protein
-   - So if user logs "1 medium apple (180g)" → 180 × 0.52 = 94 kcal → round to 95 kcal
+  try {
+    const prompt = `You are a precise nutrition calculator using USDA FoodData Central as your authoritative source.
+The user logged: "${name}".${usdaContext}
 
-5. DOUBLE-CHECK: Multiply per-100g value × actual grams ÷ 100. If your answer seems too high or too low vs the reference table above, recalculate.
+RULES:
+1. QUANTITY: Calculate for the EXACT amount stated (e.g. "300g", "2 eggs", "1 cup") — never default to 100g.
+2. If USDA data is provided above, USE THOSE EXACT per-100g values multiplied by the quantity. Do not substitute your own estimates.
+3. If no USDA data: use USDA FoodData Central standard values: apple 52 kcal/100g | blueberry 57 | strawberry 32 | banana 89 | chicken breast grilled 165/31g prot | egg large 86 kcal each | oats dry 389 | rice cooked 130 | broccoli 34 | milk 61/100ml | olive oil 884.
+4. PER EGG: small=55 kcal, medium=72, large=86. "2 eggs" = 172 kcal. Never apply per-100g to an egg count.
+5. Show your maths in "note": e.g. "300g chicken × 1.65 = 495 kcal (USDA FDC 171477)"
 
-Reply ONLY with valid JSON, no markdown:
-{"kcal":85,"protein":1,"carbs":21,"fat":0,"fiber":2,"note":"150g blueberries, USDA 57 kcal/100g"}`;
+Reply ONLY with valid JSON:
+{"kcal":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"note":"source and calculation"}`;
 
     const resp = await callAI(prompt);
     if (!resp) throw new Error('Empty response');
     const parsed = JSON.parse(resp.replace(/```json|```/g,'').trim());
-    if (parsed.kcal !== undefined) document.getElementById('food-kcal').value    = parsed.kcal;
+    if (parsed.kcal    !== undefined) document.getElementById('food-kcal').value    = parsed.kcal;
     if (parsed.protein !== undefined) document.getElementById('food-protein').value = parsed.protein;
     if (parsed.carbs   !== undefined) document.getElementById('food-carbs').value   = parsed.carbs;
     if (parsed.fat     !== undefined) document.getElementById('food-fat').value     = parsed.fat;
     if (parsed.fiber   !== undefined) document.getElementById('food-fiber').value   = parsed.fiber;
-    showAIResponse(`${parsed.kcal} kcal · ${parsed.protein}p ${parsed.carbs}c ${parsed.fat}f ${parsed.fiber}fi — ${parsed.note||''}`);
+    const src = usdaContext ? '📊 USDA' : '🤖 AI estimate';
+    showAIResponse(`${parsed.kcal} kcal · ${parsed.protein}p ${parsed.carbs}c ${parsed.fat}f — ${src}: ${parsed.note||''}`);
   } catch(e) { showAIResponse('Error: ' + e.message); }
   finally { btn.classList.remove('loading'); btn.textContent='AI'; hideAIStatus(); }
 }
@@ -2230,9 +2287,13 @@ function updateStats() {
 function updateGraphs() {
   const days=getFilteredDays();
   const nd=document.getElementById('graphs-no-data');
-  if(!days.length){nd.style.display='block';['graph-weight','graph-intake','graph-deficit','graph-cumdeficit'].forEach(clearCanvas);return;}
+  if(!days.length){nd.style.display='block';['graph-weight','graph-intake','graph-deficit','graph-cumdeficit','graph-burned','graph-reps','graph-forecast-weekly','graph-forecast-monthly'].forEach(clearCanvas);
+    document.getElementById('forecast-weekly-panel').style.display='none';
+    document.getElementById('forecast-monthly-panel').style.display='none';
+    return;}
   nd.style.display='none';
   drawWeightGraph(days); drawIntakeGraph(days); drawDeficitGraph(days); drawCumDeficitGraph(days);
+  drawBurnedGraph(days); drawRepsGraph(days); drawForecastGraphs(days);
 }
 function clearCanvas(id){const c=document.getElementById(id);if(!c)return;const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);}
 function setupCanvas(id){const wrap=document.getElementById(id).parentElement;const c=document.getElementById(id);c.width=wrap.clientWidth-20;return{c,ctx:c.getContext('2d'),W:c.width,H:c.height};}
@@ -2308,6 +2369,146 @@ function drawCumDeficitGraph(days){
   drawLine(ctx,p,'#22c55e',2);drawDots(ctx,p,'#22c55e',3);
 }
 
+function drawBurnedGraph(days){
+  const c=document.getElementById('graph-burned');
+  if(!c)return;
+  const{ctx,W,H}=setupCanvas('graph-burned');
+  ctx.fillStyle='#151c2c';ctx.fillRect(0,0,W,H);
+  const pad={top:12,bottom:22,left:50,right:10};
+  const vals=days.map(d=>d.burned||0);
+  const maxY=Math.max(50,...vals);
+  drawGrid(ctx,W,H,pad,0,maxY,4);drawXLabels(ctx,days,W,H,pad);
+  // Draw as bars
+  const n=days.length, bw=Math.max(2,(W-pad.left-pad.right)/n*0.6);
+  const zeroY=H-pad.bottom;
+  days.forEach((d,i)=>{
+    const x=pad.left+(i+0.5)*(W-pad.left-pad.right)/n;
+    const barH=(d.burned||0)/maxY*(H-pad.top-pad.bottom);
+    const y=zeroY-barH;
+    ctx.fillStyle='rgba(245,158,11,0.7)';
+    ctx.beginPath();ctx.roundRect(x-bw/2,y,bw,barH,2);ctx.fill();
+  });
+  // Y labels
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px DM Mono,monospace';ctx.textAlign='right';
+  [0,Math.round(maxY/2),Math.round(maxY)].forEach(v=>{
+    const y=pad.top+(H-pad.top-pad.bottom)*(1-v/maxY);
+    ctx.fillText(v,pad.left-4,y+3);
+  });
+}
+
+function drawRepsGraph(days){
+  const c=document.getElementById('graph-reps');
+  if(!c)return;
+  const{ctx,W,H}=setupCanvas('graph-reps');
+  ctx.fillStyle='#151c2c';ctx.fillRect(0,0,W,H);
+  const pad={top:12,bottom:22,left:50,right:10};
+  const pushVals=days.map(d=>d.pushups||0);
+  const sitVals =days.map(d=>d.situps||0);
+  const maxY=Math.max(10,...pushVals,...sitVals);
+  drawGrid(ctx,W,H,pad,0,maxY,4);drawXLabels(ctx,days,W,H,pad);
+  const p1=pts2XY(days,W,H,pad,(_,i)=>pushVals[i],0,maxY);
+  const p2=pts2XY(days,W,H,pad,(_,i)=>sitVals[i],0,maxY);
+  drawLine(ctx,p1,'#06d6c7',2);drawDots(ctx,p1,'#06d6c7',3);
+  drawLine(ctx,p2,'#8b5cf6',2);drawDots(ctx,p2,'#8b5cf6',3);
+  // Y labels
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px DM Mono,monospace';ctx.textAlign='right';
+  [0,Math.round(maxY/2),maxY].forEach(v=>{
+    const y=pad.top+(H-pad.top-pad.bottom)*(1-v/maxY);
+    ctx.fillText(v,pad.left-4,y+3);
+  });
+}
+
+function drawForecastGraphs(days) {
+  const last7  = days.slice(-7);
+  const last30 = days.slice(-30);
+  const avg7   = last7.length  ? last7.reduce((s,d)=>s+(d.deficit||0),0)/last7.length   : 0;
+  const avg30  = last30.length ? last30.reduce((s,d)=>s+(d.deficit||0),0)/last30.length : 0;
+  const currentW = state.profile.weight || (() => { const ws=days.filter(d=>d.weight!=null); return ws.length?ws[ws.length-1].weight:null; })();
+  if (!currentW) return;
+  const goalW = state.profile.goalWeight;
+  const kgPerDay7  = avg7  / 7700;
+  const kgPerDay30 = avg30 / 7700;
+
+  function buildForecast(kgPerDay, weeks=26) {
+    const pts = [];
+    for (let w=0;w<=weeks;w++) pts.push({ week:w, weight: +Math.max(currentW - kgPerDay*7*w, 30).toFixed(1) });
+    return pts;
+  }
+
+  function renderForecastPanel(canvasId, cardsId, panelId, kgPerDay, rateLabel) {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    if (Math.abs(kgPerDay) < 0.001) { panel.style.display='none'; return; }
+    panel.style.display = 'block';
+    const pts = buildForecast(kgPerDay);
+    const finalW = pts[pts.length-1].weight;
+    const totalLoss = +(currentW - finalW).toFixed(1);
+    const weeksToGoal = goalW && kgPerDay > 0 && goalW < currentW ? Math.round((currentW-goalW)/(kgPerDay*7)) : null;
+    const cards = document.getElementById(cardsId);
+    if (cards) cards.innerHTML = [
+      { val: (kgPerDay*7).toFixed(2)+' kg', lbl: 'kg lost per week ('+rateLabel+' avg)' },
+      { val: (totalLoss>0?'−':'+') + Math.abs(totalLoss)+' kg', lbl: 'Projected 6-month change' },
+      { val: finalW+' kg', lbl: 'Projected weight in 6 months' },
+      { val: weeksToGoal&&weeksToGoal>0 ? weeksToGoal+' wks' : weeksToGoal===0?'✓ Reached':'—', lbl: 'Weeks to goal weight' },
+    ].map(c=>`<div class="stat-card"><span class="stat-val">${c.val}</span><span class="stat-lbl">${c.lbl}</span></div>`).join('');
+
+    const cvs=document.getElementById(canvasId); if(!cvs)return;
+    const{ctx,W,H}=setupCanvas(canvasId);
+    ctx.fillStyle='#151c2c'; ctx.fillRect(0,0,W,H);
+    const pad={top:18,bottom:32,left:54,right:14};
+    const weights=pts.map(p=>p.weight);
+    const minY=Math.min(...weights)-2, maxY=Math.max(...weights)+2;
+    drawGrid(ctx,W,H,pad,minY,maxY,5);
+    // X labels every 4 weeks
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px DM Mono,monospace';ctx.textAlign='center';
+    pts.filter((_,i)=>i%4===0).forEach(p=>{
+      const x=pad.left+p.week/(pts.length-1)*(W-pad.left-pad.right);
+      ctx.fillText(p.week===0?'Now':'+'+p.week+'w', x, H-pad.bottom+12);
+    });
+    // Y labels
+    ctx.textAlign='right';
+    for(let i=0;i<=5;i++){
+      const v=minY+(maxY-minY)*i/5;
+      const y=pad.top+(H-pad.top-pad.bottom)*(1-i/5);
+      ctx.fillText(Math.round(v)+'kg',pad.left-4,y+3);
+    }
+    // Goal weight dashed line
+    if(goalW&&goalW>=minY&&goalW<=maxY){
+      const gy=pad.top+(H-pad.top-pad.bottom)*(1-(goalW-minY)/(maxY-minY));
+      ctx.strokeStyle='rgba(245,158,11,0.6)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
+      ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(W-pad.right,gy);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(245,158,11,0.9)';ctx.textAlign='right';ctx.font='9px DM Mono,monospace';
+      ctx.fillText('goal '+goalW+'kg',W-pad.right-2,gy-3);
+    }
+    // Projection line + shading
+    const mapped=pts.map((p,i)=>({
+      x:pad.left+i/(pts.length-1)*(W-pad.left-pad.right),
+      y:pad.top+(H-pad.top-pad.bottom)*(1-(p.weight-minY)/(maxY-minY))
+    }));
+    const lc=kgPerDay>0?'#06d6c7':'#ef4444';
+    ctx.fillStyle=kgPerDay>0?'rgba(6,214,199,0.09)':'rgba(239,68,68,0.09)';
+    ctx.beginPath();
+    ctx.moveTo(mapped[0].x,H-pad.bottom);
+    mapped.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.lineTo(mapped[mapped.length-1].x,H-pad.bottom);
+    ctx.closePath();ctx.fill();
+    drawLine(ctx,mapped,lc,2.5);
+    // Start dot
+    ctx.fillStyle=lc;ctx.beginPath();ctx.arc(mapped[0].x,mapped[0].y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='10px Outfit,sans-serif';ctx.textAlign='left';
+    ctx.fillText(currentW+'kg',mapped[0].x+6,mapped[0].y-4);
+    // End dot + label
+    const last=mapped[mapped.length-1];
+    ctx.fillStyle=lc;ctx.beginPath();ctx.arc(last.x,last.y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.textAlign='right';
+    ctx.fillText(finalW+'kg',last.x-6,last.y-4);
+  }
+
+  renderForecastPanel('graph-forecast-weekly',  'forecast-weekly-cards',  'forecast-weekly-panel',  kgPerDay7,  '7-day');
+  renderForecastPanel('graph-forecast-monthly', 'forecast-monthly-cards', 'forecast-monthly-panel', kgPerDay30, '30-day');
+}
+
 // ═══════════════════════════════════════════════
 // HISTORY
 // ═══════════════════════════════════════════════
@@ -2319,7 +2520,8 @@ function renderHistory(){
     const dt=new Date(d.date+'T12:00:00');
     const label=`${dt.getMonth()+1}/${dt.getDate()}/${String(dt.getFullYear()).slice(2)}`;
     const dc=(d.deficit||0)>0?'td-green':'td-red', nc=(d.net||0)>(d.tdee||d.bmr||9999)?'td-red':'';
-    return `<tr><td>${label}</td><td class="td-num">${d.weight?d.weight+'kg':'—'}</td><td class="td-num">${d.intake||0}</td><td class="td-num">${d.burned||0}</td><td class="td-num ${nc}">${d.net||0}</td><td class="td-num ${dc}">${Math.round(d.deficit||0)}</td></tr>`;
+    const ps=d.pushups||0, ss=d.situps||0;
+    return `<tr><td>${label}</td><td class="td-num">${d.weight?d.weight+'kg':'—'}</td><td class="td-num">${d.intake||0}</td><td class="td-num">${d.burned||0}</td><td class="td-num ${nc}">${d.net||0}</td><td class="td-num ${dc}">${Math.round(d.deficit||0)}</td><td class="td-num">${ps||'—'}</td><td class="td-num">${ss||'—'}</td></tr>`;
   }).join('');
 }
 
