@@ -1473,55 +1473,40 @@ async function aiEstimateFood() {
   if (state.ai.provider === 'none') { showAIResponse('No AI configured. Open ⚙ Settings to add an API key.'); return; }
   const btn = document.getElementById('btn-food-ai');
   btn.classList.add('loading'); btn.textContent='…';
-  showAIStatus('● Looking up in USDA database…');
-
-  // ── Step 1: Try USDA FoodData Central (free API, times out gracefully) ──
-  let usdaContext = '';
+  showAIStatus('● AI estimating nutrition…');
   try {
-    const searchQuery = name.replace(/^\d+[\d.,]*\s*(g|ml|kg|l|cup|tbsp|tsp|oz|lb|piece|slice|clove|handful|x|×)?\s*/i, '').trim() || name;
-    const usdaUrl = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(searchQuery)}&dataType=SR%20Legacy,Foundation&pageSize=3&api_key=DEMO_KEY`;
-    // Use Promise.race so a slow/blocked USDA request never stalls the whole function
-    const fetchPromise = fetch(usdaUrl).then(r => r.ok ? r.json() : null);
-    const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 3500));
-    const usdaData = await Promise.race([fetchPromise, timeoutPromise]);
-    const foods = usdaData?.foods || [];
-    if (foods.length) {
-      usdaContext = '\n\nREAL USDA FOODDATA CENTRAL DATA (use these exact values):\n';
-      foods.slice(0, 2).forEach((food, i) => {
-        const get = (id) => { const n = food.foodNutrients?.find(n => n.nutrientId === id); return n ? Math.round(n.value*10)/10 : 0; };
-        usdaContext += `Option ${i+1}: "${food.description}" per 100g: ${get(1008)} kcal, ${get(1003)}g protein, ${get(1005)}g carbs, ${get(1004)}g fat, ${get(1079)}g fiber\n`;
-      });
-      usdaContext += 'Use the most relevant option. These are authoritative — do not override.';
-      showAIStatus('● USDA data found — calculating…');
-    }
-  } catch(e) {
-    usdaContext = ''; // USDA unavailable — AI uses built-in values
-  }
+    const prompt = `Nutrition database. Food logged: "${name}".
 
-  try {
-    const prompt = `You are a precise nutrition calculator using USDA FoodData Central as your authoritative source.
-The user logged: "${name}".${usdaContext}
+Use these USDA FoodData Central reference values per 100g:
+Fruits: apple 52 kcal 0.3p 14c 0.2f | blueberry 57 kcal 0.7p 14c 2.4fi | strawberry 32 kcal 0.7p 8c 2fi | banana 89 kcal 1.1p 23c 2.6fi | grape 69 kcal 0.7p 18c 0.9fi | orange 47 kcal 0.9p 12c 2.4fi
+Protein: chicken breast grilled 165 kcal 31p 0c 3.6f | egg whole boiled 155 kcal 13p 1c 11f [NOTE: per 100g = ~1.7 eggs; 1 large egg = 60g = 86 kcal 7p] | salmon cooked 208 kcal 20p 0c 13f | tuna canned 116 kcal 26p 0c 1f | beef lean 250 kcal 26p 0c 15f
+Carbs: white rice cooked 130 kcal 2.7p 28c 0.4fi | oats dry 389 kcal 17p 66c 10fi | bread white 265 kcal 9p 49c 2.7fi | pasta cooked 131 kcal 5p 25c 1.8fi | potato boiled 87 kcal 1.9p 20c 1.8fi
+Dairy: whole milk 61 kcal/100ml 3.2p 4.8c 3.3f | greek yogurt 59 kcal 10p 3.6c 0.4f | cheddar 402 kcal 25p 1.3c 33f
+Other: olive oil 884 kcal 0p 0c 100f | butter 717 kcal 0.9p 0.1c 81f | broccoli 34 kcal 2.8p 7c 2.6fi | spinach 23 kcal 2.9p 3.6c 2.2fi
 
 RULES:
-1. QUANTITY: Calculate for the EXACT amount stated (e.g. "300g", "2 eggs", "1 cup") — never default to 100g.
-2. If USDA data is provided above, USE THOSE EXACT per-100g values multiplied by the quantity. Do not substitute your own estimates.
-3. If no USDA data: use USDA FoodData Central standard values: apple 52 kcal/100g | blueberry 57 | strawberry 32 | banana 89 | chicken breast grilled 165/31g prot | egg large 86 kcal each | oats dry 389 | rice cooked 130 | broccoli 34 | milk 61/100ml | olive oil 884.
-4. PER EGG: small=55 kcal, medium=72, large=86. "2 eggs" = 172 kcal. Never apply per-100g to an egg count.
-5. Show your maths in "note": e.g. "300g chicken × 1.65 = 495 kcal (USDA FDC 171477)"
+1. If quantity given (e.g. "300g", "2 eggs"), calculate for THAT EXACT AMOUNT.
+2. "2 eggs" = 2 × 86 kcal = 172 kcal, 14g protein. Never use per-100g for egg count.
+3. If no quantity, assume a standard single serving.
+4. ALL fields must be separate correct values — carbs must NOT equal kcal.
 
-Reply ONLY with valid JSON:
-{"kcal":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"note":"source and calculation"}`;
+Reply ONLY with this exact JSON (no markdown, no other text):
+{"kcal":165,"protein":31,"carbs":0,"fat":4,"fiber":0,"note":"100g grilled chicken, USDA"}`;
 
     const resp = await callAI(prompt);
     if (!resp) throw new Error('Empty response');
-    const parsed = JSON.parse(resp.replace(/```json|```/g,'').trim());
-    if (parsed.kcal    !== undefined) document.getElementById('food-kcal').value    = parsed.kcal;
-    if (parsed.protein !== undefined) document.getElementById('food-protein').value = parsed.protein;
-    if (parsed.carbs   !== undefined) document.getElementById('food-carbs').value   = parsed.carbs;
-    if (parsed.fat     !== undefined) document.getElementById('food-fat').value     = parsed.fat;
-    if (parsed.fiber   !== undefined) document.getElementById('food-fiber').value   = parsed.fiber;
-    const src = usdaContext ? '📊 USDA' : '🤖 AI estimate';
-    showAIResponse(`${parsed.kcal} kcal · ${parsed.protein}p ${parsed.carbs}c ${parsed.fat}f — ${src}: ${parsed.note||''}`);
+    // Extract JSON safely
+    const s = resp.indexOf('{'), e = resp.lastIndexOf('}');
+    if (s === -1 || e <= s) throw new Error('No JSON in response');
+    const parsed = JSON.parse(resp.slice(s, e+1));
+    // Validate all fields are distinct numbers (carbs-equals-kcal guard)
+    const setField = (id, val) => { if (typeof val === 'number' && !isNaN(val)) document.getElementById(id).value = val; };
+    setField('food-kcal',    parsed.kcal);
+    setField('food-protein', parsed.protein);
+    setField('food-carbs',   parsed.carbs);
+    setField('food-fat',     parsed.fat);
+    setField('food-fiber',   parsed.fiber);
+    showAIResponse(`${parsed.kcal} kcal · ${parsed.protein}p ${parsed.carbs}c ${parsed.fat}f ${parsed.fiber}fi — ${parsed.note||''}`);
   } catch(e) { showAIResponse('Error: ' + e.message); }
   finally { btn.classList.remove('loading'); btn.textContent='AI'; hideAIStatus(); }
 }
