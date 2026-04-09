@@ -2376,12 +2376,13 @@ function drawRepsGraph(days){
   const{ctx,W,H}=setupCanvas('graph-reps');
   ctx.fillStyle='#151c2c';ctx.fillRect(0,0,W,H);
   const pad={top:12,bottom:22,left:50,right:10};
-  const pushVals=days.map(d=>d.pushups||0);
-  const sitVals =days.map(d=>d.situps||0);
-  const maxY=Math.max(10,...pushVals,...sitVals);
-  drawGrid(ctx,W,H,pad,0,maxY,4);drawXLabels(ctx,days,W,H,pad);
-  const p1=pts2XY(days,W,H,pad,(_,i)=>pushVals[i],0,maxY);
-  const p2=pts2XY(days,W,H,pad,(_,i)=>sitVals[i],0,maxY);
+  // Embed pushup/situp counts directly on day objects for pts2XY compatibility
+  const enriched = days.map(d=>({...d, _push: d.pushups||0, _sit: d.situps||0}));
+  const maxY = Math.max(10, ...enriched.map(d=>Math.max(d._push, d._sit)));
+  drawGrid(ctx,W,H,pad,0,maxY,4);
+  drawXLabels(ctx,enriched,W,H,pad);
+  const p1 = pts2XY(enriched,W,H,pad,d=>d._push,0,maxY);
+  const p2 = pts2XY(enriched,W,H,pad,d=>d._sit, 0,maxY);
   drawLine(ctx,p1,'#06d6c7',2);drawDots(ctx,p1,'#06d6c7',3);
   drawLine(ctx,p2,'#8b5cf6',2);drawDots(ctx,p2,'#8b5cf6',3);
   // Y labels
@@ -2393,37 +2394,53 @@ function drawRepsGraph(days){
 }
 
 function drawForecastGraphs(days) {
+  // Average DAILY deficit from logged history (kcal/day)
   const last7  = days.slice(-7);
   const last30 = days.slice(-30);
-  const avg7   = last7.length  ? last7.reduce((s,d)=>s+(d.deficit||0),0)/last7.length   : 0;
-  const avg30  = last30.length ? last30.reduce((s,d)=>s+(d.deficit||0),0)/last30.length : 0;
-  const currentW = state.profile.weight || (() => { const ws=days.filter(d=>d.weight!=null); return ws.length?ws[ws.length-1].weight:null; })();
+  const avgDef7  = last7.length  ? last7.reduce((s,d)=>s+(d.deficit||0),0)/last7.length   : 0;
+  const avgDef30 = last30.length ? last30.reduce((s,d)=>s+(d.deficit||0),0)/last30.length : 0;
+
+  const currentW = state.profile.weight ||
+    (() => { const ws=days.filter(d=>d.weight!=null); return ws.length?ws[ws.length-1].weight:null; })();
   if (!currentW) return;
   const goalW = state.profile.goalWeight;
-  const kgPerDay7  = avg7  / 7700;
-  const kgPerDay30 = avg30 / 7700;
 
-  function buildForecast(kgPerDay, weeks=26) {
+  // kg lost per DAY = daily deficit / 7700
+  const kgPerDay7  = avgDef7  / 7700;
+  const kgPerDay30 = avgDef30 / 7700;
+
+  // Build daily data points for 6 months (182 days), sampled every 7 days for display
+  function buildForecast(kgPerDay) {
+    const today = new Date(); today.setHours(0,0,0,0);
     const pts = [];
-    for (let w=0;w<=weeks;w++) pts.push({ week:w, weight: +Math.max(currentW - kgPerDay*7*w, 30).toFixed(1) });
+    for (let day=0; day<=182; day+=7) {
+      const date = new Date(today); date.setDate(today.getDate()+day);
+      const w = +Math.max(currentW - kgPerDay*day, 30).toFixed(1);
+      const mm = date.getMonth()+1, dd = date.getDate();
+      pts.push({ day, weight: w, label: mm+'/'+dd });
+    }
     return pts;
   }
 
-  function renderForecastPanel(canvasId, cardsId, panelId, kgPerDay, rateLabel) {
+  function renderForecastPanel(canvasId, cardsId, panelId, kgPerDay, avgDeficit, rateLabel) {
     const panel = document.getElementById(panelId);
     if (!panel) return;
-    if (Math.abs(kgPerDay) < 0.001) { panel.style.display='none'; return; }
+    if (Math.abs(kgPerDay) < 0.0001) { panel.style.display='none'; return; }
     panel.style.display = 'block';
-    const pts = buildForecast(kgPerDay);
+
+    const pts    = buildForecast(kgPerDay);
     const finalW = pts[pts.length-1].weight;
     const totalLoss = +(currentW - finalW).toFixed(1);
-    const weeksToGoal = goalW && kgPerDay > 0 && goalW < currentW ? Math.round((currentW-goalW)/(kgPerDay*7)) : null;
+    const daysToGoal = goalW && kgPerDay > 0 && goalW < currentW
+      ? Math.ceil((currentW - goalW) / kgPerDay) : null;
+    const weeksToGoal = daysToGoal ? Math.round(daysToGoal/7) : null;
+
     const cards = document.getElementById(cardsId);
     if (cards) cards.innerHTML = [
-      { val: (kgPerDay*7).toFixed(2)+' kg', lbl: 'kg lost per week ('+rateLabel+' avg)' },
-      { val: (totalLoss>0?'−':'+') + Math.abs(totalLoss)+' kg', lbl: 'Projected 6-month change' },
-      { val: finalW+' kg', lbl: 'Projected weight in 6 months' },
-      { val: weeksToGoal&&weeksToGoal>0 ? weeksToGoal+' wks' : weeksToGoal===0?'✓ Reached':'—', lbl: 'Weeks to goal weight' },
+      { val: Math.round(avgDeficit)+' kcal/day', lbl: 'Avg daily deficit ('+rateLabel+')' },
+      { val: +(kgPerDay*7).toFixed(2)+' kg',     lbl: 'Projected loss per week' },
+      { val: (totalLoss>0?'−':'+')+Math.abs(totalLoss)+' kg', lbl: '6-month projected change' },
+      { val: weeksToGoal&&weeksToGoal>0?weeksToGoal+' wks':weeksToGoal===0?'✓ Reached':'—', lbl: 'Weeks to goal weight' },
     ].map(c=>`<div class="stat-card"><span class="stat-val">${c.val}</span><span class="stat-lbl">${c.lbl}</span></div>`).join('');
 
     const cvs=document.getElementById(canvasId); if(!cvs)return;
@@ -2431,56 +2448,66 @@ function drawForecastGraphs(days) {
     ctx.fillStyle='#151c2c'; ctx.fillRect(0,0,W,H);
     const pad={top:18,bottom:32,left:54,right:14};
     const weights=pts.map(p=>p.weight);
-    const minY=Math.min(...weights)-2, maxY=Math.max(...weights)+2;
+    const minY=Math.min(...weights)-1, maxY=Math.max(...weights)+1;
     drawGrid(ctx,W,H,pad,minY,maxY,5);
-    // X labels every 4 weeks
-    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px DM Mono,monospace';ctx.textAlign='center';
-    pts.filter((_,i)=>i%4===0).forEach(p=>{
-      const x=pad.left+p.week/(pts.length-1)*(W-pad.left-pad.right);
-      ctx.fillText(p.week===0?'Now':'+'+p.week+'w', x, H-pad.bottom+12);
+
+    // X axis: real dates
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='9px monospace';ctx.textAlign='center';
+    // Show every ~4 weeks (every 4th point)
+    pts.filter((_,i)=>i===0||i%4===0||i===pts.length-1).forEach((p,_,arr)=>{
+      const x=pad.left+p.day/182*(W-pad.left-pad.right);
+      ctx.fillText(p.day===0?'Today':p.label, x, H-pad.bottom+12);
     });
-    // Y labels
-    ctx.textAlign='right';
+
+    // Y axis
+    ctx.textAlign='right'; ctx.font='9px monospace';
     for(let i=0;i<=5;i++){
       const v=minY+(maxY-minY)*i/5;
       const y=pad.top+(H-pad.top-pad.bottom)*(1-i/5);
       ctx.fillText(Math.round(v)+'kg',pad.left-4,y+3);
     }
+
     // Goal weight dashed line
     if(goalW&&goalW>=minY&&goalW<=maxY){
       const gy=pad.top+(H-pad.top-pad.bottom)*(1-(goalW-minY)/(maxY-minY));
       ctx.strokeStyle='rgba(245,158,11,0.6)';ctx.lineWidth=1;ctx.setLineDash([5,4]);
       ctx.beginPath();ctx.moveTo(pad.left,gy);ctx.lineTo(W-pad.right,gy);ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle='rgba(245,158,11,0.9)';ctx.textAlign='right';ctx.font='9px DM Mono,monospace';
+      ctx.fillStyle='rgba(245,158,11,0.9)';ctx.textAlign='right';ctx.font='9px monospace';
       ctx.fillText('goal '+goalW+'kg',W-pad.right-2,gy-3);
     }
-    // Projection line + shading
-    const mapped=pts.map((p,i)=>({
-      x:pad.left+i/(pts.length-1)*(W-pad.left-pad.right),
-      y:pad.top+(H-pad.top-pad.bottom)*(1-(p.weight-minY)/(maxY-minY))
+
+    // Projection line
+    const mapped=pts.map(p=>({
+      x: pad.left+p.day/182*(W-pad.left-pad.right),
+      y: pad.top+(H-pad.top-pad.bottom)*(1-(p.weight-minY)/(maxY-minY))
     }));
     const lc=kgPerDay>0?'#06d6c7':'#ef4444';
+
+    // Shading under curve
     ctx.fillStyle=kgPerDay>0?'rgba(6,214,199,0.09)':'rgba(239,68,68,0.09)';
     ctx.beginPath();
-    ctx.moveTo(mapped[0].x,H-pad.bottom);
+    ctx.moveTo(mapped[0].x, H-pad.bottom);
     mapped.forEach(p=>ctx.lineTo(p.x,p.y));
-    ctx.lineTo(mapped[mapped.length-1].x,H-pad.bottom);
-    ctx.closePath();ctx.fill();
+    ctx.lineTo(mapped[mapped.length-1].x, H-pad.bottom);
+    ctx.closePath(); ctx.fill();
+
     drawLine(ctx,mapped,lc,2.5);
-    // Start dot
-    ctx.fillStyle=lc;ctx.beginPath();ctx.arc(mapped[0].x,mapped[0].y,4,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='10px Outfit,sans-serif';ctx.textAlign='left';
-    ctx.fillText(currentW+'kg',mapped[0].x+6,mapped[0].y-4);
-    // End dot + label
+
+    // Today dot + label
+    ctx.fillStyle=lc; ctx.beginPath(); ctx.arc(mapped[0].x,mapped[0].y,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.8)'; ctx.font='10px monospace'; ctx.textAlign='left';
+    ctx.fillText(currentW+'kg', mapped[0].x+6, mapped[0].y-4);
+
+    // 6-month dot + label
     const last=mapped[mapped.length-1];
-    ctx.fillStyle=lc;ctx.beginPath();ctx.arc(last.x,last.y,4,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.textAlign='right';
-    ctx.fillText(finalW+'kg',last.x-6,last.y-4);
+    ctx.fillStyle=lc; ctx.beginPath(); ctx.arc(last.x,last.y,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.textAlign='right';
+    ctx.fillText(finalW+'kg', last.x-6, last.y-4);
   }
 
-  renderForecastPanel('graph-forecast-weekly',  'forecast-weekly-cards',  'forecast-weekly-panel',  kgPerDay7,  '7-day');
-  renderForecastPanel('graph-forecast-monthly', 'forecast-monthly-cards', 'forecast-monthly-panel', kgPerDay30, '30-day');
+  renderForecastPanel('graph-forecast-weekly',  'forecast-weekly-cards',  'forecast-weekly-panel',  kgPerDay7,  avgDef7,  '7-day');
+  renderForecastPanel('graph-forecast-monthly', 'forecast-monthly-cards', 'forecast-monthly-panel', kgPerDay30, avgDef30, '30-day');
 }
 
 // ═══════════════════════════════════════════════
