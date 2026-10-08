@@ -1419,6 +1419,7 @@ function nextDay() {
 // ═══════════════════════════════════════════════
 // AI CORE
 // ═══════════════════════════════════════════════
+const GROQ_MODEL = 'openai/gpt-oss-120b'; // llama-3.3-70b-versatile was shut down by Groq on 2026-08-16
 async function callAI(prompt) {
   const { provider, groqKey, geminiKey, geminiModel, mistralKey, claudeKey } = state.ai;
   if (provider === 'none') return null;
@@ -1426,7 +1427,7 @@ async function callAI(prompt) {
     if (!groqKey) return null;
     const r = await fetch('https://api.groq.com/openai/v1/chat/completions', { method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},
-      body: JSON.stringify({ model:'llama-3.3-70b-versatile', messages:[{role:'user',content:prompt}], max_tokens:300, temperature:0.3 }) });
+      body: JSON.stringify({ model:GROQ_MODEL, messages:[{role:'user',content:prompt}], max_tokens:2000, temperature:0.3, reasoning_effort:'medium' }) });
     if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||'Groq error'); }
     return (await r.json()).choices?.[0]?.message?.content || null;
   }
@@ -2103,7 +2104,7 @@ async function testConnection() {
     const fail=s=>{ res.style.cssText='display:block;padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:8px;background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.3);'; res.textContent='✕ '+s; };
     if (settingsProvider==='groq') {
       if (!gKey) { fail('Enter Groq API key first'); return; }
-      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+gKey},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'Reply: ONLINE'}],max_tokens:5})});
+      const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+gKey},body:JSON.stringify({model:GROQ_MODEL,messages:[{role:'user',content:'Reply: ONLINE'}],max_tokens:200,reasoning_effort:'low'})});
       if (!r.ok){const e=await r.json();throw new Error(e.error?.message||'HTTP '+r.status);}
       testResp=(await r.json()).choices?.[0]?.message?.content; ok('Groq connected · '+testResp?.trim());
     } else if (settingsProvider==='gemini') {
